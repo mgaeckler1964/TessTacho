@@ -318,7 +318,7 @@ public class TessTachoActivity extends Activity
     	case R.id.about:
     		showResult(
     			"TessTacho", 
-    			"TessTacho 2.5.31\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/"
+    			"TessTacho 2.6.4\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/"
     		);
     		break;
     	}
