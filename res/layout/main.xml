@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:keepScreenOn="true"
+    >
+
+	<TextView  
+	    android:layout_width="fill_parent" 
+	    android:layout_height="wrap_content"
+	    android:id="@+id/statusLabel"
+	    android:text="@string/statusLabel"/>
+	
+	<TextView  
+	    android:layout_width="fill_parent" 
+	    android:layout_height="wrap_content"
+	    android:id="@+id/brakeStatus"
+	    android:textSize="20sp"
+	    android:text="@string/brakeStatus"/>
+	
+	<TextView  
+	    android:layout_width="fill_parent" 
+	    android:layout_height="wrap_content"
+	    android:id="@+id/accelStatus"
+	    android:textSize="20sp"
+	    android:text="@string/accelStatus"/>
+	
+		<com.gak.TessTacho.TachoWidget 
+		android:layout_width="fill_parent" 
+		android:layout_height="fill_parent" 
+		android:id="@+id/myTacho"/>
+
+</LinearLayout>

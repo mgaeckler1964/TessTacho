@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TessTacho</string>
+    
+    <string name="textView1">Anfangsgeschwindigkeit</string>
+    <string name="textView2">Zielgeschwindigkeit</string>
+
+    <string name="statistics">Statistik</string>
+    <string name="accelTest">Beschleunigung</string>
+    <string name="about">Info</string>
+    <string name="exit">Beenden</string>
+ 	
+    <string name="statusLabel">Status</string>
+    <string name="brakeStatus">Bremsen</string>
+    <string name="accelStatus">Beschleunigung</string>
+</resources>
