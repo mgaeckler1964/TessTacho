@@ -3,13 +3,16 @@ package com.gak.TessTacho;
 import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.Queue;
+
 import com.gak.TessTacho.R;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.location.GpsSatellite;
 import android.location.GpsStatus;
 import android.location.Location;
@@ -99,6 +102,12 @@ public class TessTachoActivity extends Activity
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
+        {
+        	showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
+        	return;
+        }
+        
         PowerManager	pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         m_wakeLock = pm.newWakeLock( PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, "TessTacho" );
         m_wakeLock.acquire();
@@ -316,9 +325,10 @@ public class TessTachoActivity extends Activity
     		break;
     	}
     	case R.id.about:
-    		showResult(
+    		showMessage(
     			"TessTacho", 
-    			"TessTacho 2.6.5\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/"
+    			"TessTacho 2.6.5\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/",
+    			false
     		);
     		break;
     	}
@@ -545,15 +555,20 @@ public class TessTachoActivity extends Activity
     	m_myStatus = text;
     	m_statusLabel.setText( text + " " + s_accuracyFormat.format(m_accuracy) + " " + Long.toString(m_locationFixCount) );
     }
-    private void showResult( String title, String resultString )
+
+    private void showMessage( String title, String message, final boolean terminate )
     {
     	AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    	builder.setMessage(resultString)
+    	builder.setMessage(message)
     		   .setTitle(title)
     	       .setCancelable(false)
     	       .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
     	           public void onClick(DialogInterface dialog, int id) {
     	                dialog.cancel();
+    	                if( terminate )
+    	                {
+    	                	finish();
+    	                }
     	           }
     	       })
     	       .setIcon(R.drawable.icon);
