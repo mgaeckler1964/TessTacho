@@ -325,12 +325,16 @@ public class TessTachoActivity extends Activity
     		break;
     	}
     	case R.id.about:
+    	{
+    		String name = getString(R.string.app_name);
+    		String version = getString(R.string.app_version);
     		showMessage(
-    			"TessTacho", 
-    			"TessTacho 2.6.5\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/",
+    			name, 
+    			name + " "+version+"\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/",
     			false
     		);
     		break;
+    	}
     	}
 
     	return super.onOptionsItemSelected(item);

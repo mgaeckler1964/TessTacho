@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="com.gak.TessTacho"
-      android:versionName="2.6.5.3" android:versionCode="3">
+      android:versionName="@string/app_version" android:versionCode="4">
     <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="23"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"></uses-permission>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     
 
-    <application android:icon="@drawable/icon" android:label="@string/app_name" android:persistent="true" android:allowBackup="true" android:theme="@android:style/Theme.WithActionBar" android:allowClearUserData="true" android:supportsRtl="false" android:enabled="true">
+    <application android:icon="@drawable/icon" android:label="@string/app_name" android:persistent="true" 
+        android:allowBackup="true" android:theme="@android:style/Theme.WithActionBar" 
+        android:allowClearUserData="true" android:supportsRtl="false" android:enabled="true">
         <activity android:name="com.gak.TessTacho.TessTachoActivity"
                   android:label="@string/app_name">
             <intent-filter>
