@@ -1,10 +1,10 @@
-package com.gak.TessTacho;
+package at.gaeckler.TessTacho;
 
 import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import com.gak.TessTacho.R;
+import at.gaeckler.TessTacho.R;
 
 import android.app.Activity;
 import android.app.AlertDialog;

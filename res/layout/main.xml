@@ -26,7 +26,7 @@
 	    android:textSize="20sp"
 	    android:text="@string/accelStatus"/>
 	
-		<com.gak.TessTacho.TachoWidget 
+		<at.gaeckler.TessTacho.TachoWidget 
 		android:layout_width="fill_parent" 
 		android:layout_height="fill_parent" 
 		android:id="@+id/myTacho"/>

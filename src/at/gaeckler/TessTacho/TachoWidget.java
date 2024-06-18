@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.gak.TessTacho;
+package at.gaeckler.TessTacho;
 
 import java.text.DecimalFormat;
 

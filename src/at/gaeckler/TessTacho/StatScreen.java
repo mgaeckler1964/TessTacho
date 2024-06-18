@@ -1,9 +1,9 @@
 /**
  * 
  */
-package com.gak.TessTacho;
+package at.gaeckler.TessTacho;
 
-import com.gak.TessTacho.R;
+import at.gaeckler.TessTacho.R;
 
 import android.app.Activity;
 import android.os.Bundle;

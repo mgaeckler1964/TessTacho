@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TessTacho</string>
-    <string name="app_version">2.6.6</string>
+    <string name="app_version">2.6.18</string>
     
     <string name="textView1">Anfangsgeschwindigkeit</string>
     <string name="textView2">Zielgeschwindigkeit</string>

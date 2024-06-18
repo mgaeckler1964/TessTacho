@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      package="com.gak.TessTacho"
+      package="at.gaeckler.TessTacho"
       android:versionName="@string/app_version" android:versionCode="4">
     <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="23"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"></uses-permission>
@@ -10,13 +10,13 @@
     <application android:icon="@drawable/icon" android:label="@string/app_name" android:persistent="true" 
         android:allowBackup="true" android:theme="@android:style/Theme.WithActionBar" 
         android:allowClearUserData="true" android:supportsRtl="false" android:enabled="true">
-        <activity android:name="com.gak.TessTacho.TessTachoActivity"
+        <activity android:name="at.gaeckler.TessTacho.TessTachoActivity"
                   android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="com.gak.TessTacho.StatScreen" android:label="@string/app_name"></activity>
+        <activity android:name="at.gaeckler.TessTacho.StatScreen" android:label="@string/app_name"></activity>
     </application>
 </manifest>

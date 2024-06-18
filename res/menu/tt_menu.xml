@@ -4,6 +4,5 @@
     <item android:visible="true" android:title="@string/statistics" android:id="@+id/statistics" android:checkable="false" android:checked="false" android:enabled="true"></item>
     <item android:visible="true" android:title="@string/accelTest" android:id="@+id/accelTest" android:checkable="false" android:checked="false" android:enabled="true"></item>
     <item android:visible="true" android:title="@string/about" android:id="@+id/about" android:checkable="false" android:checked="false" android:enabled="true"></item>
-    <item android:visible="true" android:title="##########" android:id="@+id/sep1" android:checkable="false" android:checked="false" android:enabled="false"></item>
   	<item android:visible="true" android:title="@string/exit" android:id="@+id/exit" android:checkable="false" android:checked="false" android:enabled="true"></item>
 </menu>
