@@ -161,10 +161,7 @@ public class TessTachoActivity extends GpsActivity
         }
         else
         {
-        	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
-        	m_totalDistance = settings.getFloat(TOTAL_DISTANCE_KEY, 0);
-        	m_startSpeed = settings.getFloat(START_SPEED_KEY,0); 
-        	m_targetSpeed = settings.getFloat(TARGET_SPEED_KEY,0); 
+        	loadPreferences();
         }
 
         // Acquire a reference to the system Location Manager
@@ -285,35 +282,35 @@ public class TessTachoActivity extends GpsActivity
         }
     }
     
-    @Override
-    public void onPause()
+    private void savePreferences()
     {
     	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
         SharedPreferences.Editor editor = settings.edit();
         editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
         editor.putFloat( START_SPEED_KEY, (float)m_startSpeed );
         editor.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed );
-
-        // Commit the edits!
         editor.commit();
+    }
 
+    private void loadPreferences()
+    {
+    	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
+    	m_totalDistance = settings.getFloat(TOTAL_DISTANCE_KEY, 0);
+    	m_startSpeed = settings.getFloat(START_SPEED_KEY,0); 
+    	m_targetSpeed = settings.getFloat(TARGET_SPEED_KEY,0); 
+    }
+
+    @Override
+    public void onPause()
+    {
+        savePreferences();
         super.onPause();
     }
+    
 	@Override
 	public void onDestroy()
 	{
-        // Acquire a reference to the system Location Manager
-        // LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-    	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
-        editor.putFloat( START_SPEED_KEY, (float)m_startSpeed );
-        editor.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed );
-
-        // Commit the edits!
-        editor.commit();
-
+		savePreferences();
         m_wakeLock.release();
         super.onDestroy();
     }

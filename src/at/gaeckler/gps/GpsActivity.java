@@ -3,9 +3,7 @@ package at.gaeckler.gps;
 import java.util.concurrent.locks.ReentrantLock;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.GpsSatellite;
 import android.location.GpsStatus;
@@ -138,8 +136,10 @@ public abstract class GpsActivity extends Activity {
     {
 		m_lock.lock();
 		try {
-		    m_processor.onLocationChanged(newLocation);
-			onLocationChanged( newLocation );
+		    if( m_processor.onLocationChanged(newLocation) )
+		    {
+				onLocationChanged( newLocation );
+		    }
 		} finally {
 			m_lock.unlock();
 		}

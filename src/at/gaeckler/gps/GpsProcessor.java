@@ -55,7 +55,7 @@ public class GpsProcessor {
 		return m_locationList.size();
 	}
 
-	public void onLocationChanged( Location newLocation )
+	public boolean onLocationChanged( Location newLocation )
     {
     	double	lastSpeed, elapsedTime;
 		double	sDistance;
@@ -140,6 +140,7 @@ public class GpsProcessor {
 			sDistance = speedLocation.distanceTo(newLocation);
 			elapsedTime = newLocation.getTime() - speedLocation.getTime();
 			elapsedTime /= 1000;
+			lastSpeed = speedLocation.getSpeed();
 	    }
     	else
     	{
@@ -147,18 +148,41 @@ public class GpsProcessor {
     		elapsedTime = 0;
     	}
     	
+    	double speed, accel;
+    	
     	if( elapsedTime > 0 && sDistance >= m_accuracy )
     	{
-    		m_speed = sDistance / elapsedTime; 
-    		m_accel = (m_speed - lastSpeed)/elapsedTime;
+    		speed = sDistance / elapsedTime; 
+    		accel = (speed - lastSpeed)/elapsedTime;
     	}
-    	else if( newLocation.hasSpeed() )
-    		m_speed = newLocation.getSpeed();
+    	else if( newLocation.hasSpeed())
+    	{
+    		speed = newLocation.getSpeed();
+    		if(elapsedTime>0)
+    		{
+    			accel = (speed - lastSpeed)/elapsedTime;
+    		}
+    		else
+    		{
+    			accel = 0;
+    		}
+    	}
     	else
-    		m_speed = 0;
+    	{
+    		speed = 0;
+    		accel = 0;
+    	}
 
-    	newLocation.setSpeed((float)m_speed);
-    	m_locationList.add(newLocation);
+    	if ( accel < 200 && accel > -200 )
+    	{
+    		m_speed = speed;
+    		m_accel = accel;
+    		newLocation.setSpeed((float)speed);
+    		m_locationList.add(newLocation);
+    		
+    		return true;
+    	}
+    	return false;
     }
 
 }
