@@ -15,7 +15,6 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import at.gaeckler.TessTacho.R;
 
 public abstract class GpsActivity extends Activity {
 
@@ -34,26 +33,6 @@ public abstract class GpsActivity extends Activity {
 	public abstract void onLocationChanged( Location newLocation );
 	public abstract void onPermissionError();
 	
-    public void showMessage( String title, String message, final boolean terminate )
-    {
-    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    	builder.setMessage(message)
-    		   .setTitle(title)
-    	       .setCancelable(false)
-    	       .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
-    	           public void onClick(DialogInterface dialog, int id) {
-    	                dialog.cancel();
-    	                if( terminate )
-    	                {
-    	                	finish();
-    	                }
-    	           }
-    	       })
-    	       .setIcon(R.drawable.icon);
-    	AlertDialog alert = builder.create();
-    	alert.show();
-    }
-
     /** Called when the activity is first created. */
 	@Override
     public void onCreate(Bundle savedInstanceState)

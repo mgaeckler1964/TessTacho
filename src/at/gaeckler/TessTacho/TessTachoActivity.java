@@ -82,6 +82,26 @@ public class TessTachoActivity extends GpsActivity
 	private static final String			TOTAL_DISTANCE_KEY = "totalDistance";
 	private static final String			LOCATION_FIX_COUNT_KEY = "locationFixCount";
 
+    private void showMessage( String title, String message, final boolean terminate )
+    {
+    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    	builder.setMessage(message)
+    		   .setTitle(title)
+    	       .setCancelable(false)
+    	       .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
+    	           public void onClick(DialogInterface dialog, int id) {
+    	                dialog.cancel();
+    	                if( terminate )
+    	                {
+    	                	finish();
+    	                }
+    	           }
+    	       })
+    	       .setIcon(R.drawable.icon);
+    	AlertDialog alert = builder.create();
+    	alert.show();
+    }
+
 	/** Called when the activity is first created. */
 	@Override
     public void onCreate(Bundle savedInstanceState)
