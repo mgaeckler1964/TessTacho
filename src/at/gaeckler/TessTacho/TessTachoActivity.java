@@ -5,8 +5,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import at.gaeckler.TessTacho.R;
-
-import android.app.Activity;
+import at.gaeckler.gps.GpsActivity;
+import at.gaeckler.gps.GpsProcessor;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -16,9 +16,7 @@ import android.content.pm.PackageManager;
 import android.location.GpsSatellite;
 import android.location.GpsStatus;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
-import android.location.LocationProvider;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
@@ -31,7 +29,7 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.TextView;
 
-public class TessTachoActivity extends Activity
+public class TessTachoActivity extends GpsActivity
 {
 	private TextView				m_statusLabel = null;
 	private TextView				m_brakeStatusLabel = null;
@@ -40,7 +38,6 @@ public class TessTachoActivity extends Activity
 	private String					m_myStatus = "Willkommen";
 	private long					m_locationFixCount = 0;
 	LocationManager			m_locationManager;
-	private LocationListener		m_locationListener = null;
 	private GpsStatus.Listener		m_gpsStatusListener;
 	private Queue<Location>			m_locationList = new LinkedList<Location>();
 	private Location				m_distanceLocation = null;
@@ -89,14 +86,6 @@ public class TessTachoActivity extends Activity
 	private static final String			TOTAL_DISTANCE_KEY = "totalDistance";
 	private static final String			LOCATION_FIX_COUNT_KEY = "locationFixCount";
 
-	private static long speedToKmh( double speedMs )
-	{
-		return (long)(speedMs * 3.6 + 0.5);
-	}
-	static double speedToMs( long speedKmh )
-	{
-		return (double)speedKmh / 3.6;
-	}
 	/** Called when the activity is first created. */
 	@Override
     public void onCreate(Bundle savedInstanceState)
@@ -165,76 +154,6 @@ public class TessTachoActivity extends Activity
         // Acquire a reference to the system Location Manager
         m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        // Define a listener that responds to location updates
-        m_locationListener = new LocationListener()
-        {
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) 
-            {
-            	if( status == LocationProvider.OUT_OF_SERVICE )
-            	{
-            		setStatus( "Kein GPS Empfang" );
-            		showSpeed( 0, 0 );
-            	}
-            	else if( status == LocationProvider.TEMPORARILY_UNAVAILABLE )
-            		setStatus( "Kurzfristig kein GPS Empfang" );
-            	else if( status == LocationProvider.AVAILABLE )
-            		setStatus( "GPS Empfang" );
-            }
-
-            @Override
-            public void onProviderEnabled(String provider)
-            {
-            	setStatus( "GPS ist eingeschaltet");
-            }
-
-            @Override
-            public void onProviderDisabled(String provider)
-            {
-            	setStatus( "GPS ist abgeschaltet");
-        		showSpeed( 0, 0 );
-            }
-
-			@Override
-			public void onLocationChanged(Location location)
-			{
-				onLocationChanged2( location );
-			}
-          };
-
-          // Register the listener with the Location Manager to receive location updates
-          m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, m_locationListener);
-          m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, m_locationListener);
-
-          m_gpsStatusListener = new GpsStatus.Listener()
-          {
-
-			@Override
-			public void onGpsStatusChanged(int event)
-			{
-				if( event == GpsStatus.GPS_EVENT_STARTED )
-	            	setStatus( "GPS gestartet");
-				else if( event == GpsStatus.GPS_EVENT_STOPPED )
-	            	setStatus( "GPS gestoppt");
-				else if( event == GpsStatus.GPS_EVENT_FIRST_FIX )
-	            	setStatus( "GPS erster Fix");
-				else if( event == GpsStatus.GPS_EVENT_SATELLITE_STATUS  )
-				{
-					int Satellites = 0;
-					int SatellitesInFix = 0;
-					for (GpsSatellite sat : m_locationManager.getGpsStatus(null).getSatellites())
-					{
-						if(sat.usedInFix())
-							SatellitesInFix++;              
-
-						Satellites++;
-					}
-					setStatus( "GPS Satelliten: " + Integer.toString(SatellitesInFix) + "/" + Integer.toString(Satellites) );
-				}
-			}
-          };
-          m_locationManager.addGpsStatusListener(m_gpsStatusListener);
-
           showSpeed( 0, 0 );
 	}
 
@@ -261,11 +180,11 @@ public class TessTachoActivity extends Activity
     	final EditText targetSpeed = (EditText) view.findViewById(R.id.targetSpeed);
     	if (m_startSpeed > 0)
     	{
-    		startSpeed.setText(Long.toString(speedToKmh(m_startSpeed)));
+    		startSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_startSpeed)));
     	}
     	if (m_targetSpeed > 0)
     	{
-    		targetSpeed.setText(Long.toString(speedToKmh(m_targetSpeed)));
+    		targetSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_targetSpeed)));
     	}
     	alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
     	    @Override
@@ -273,8 +192,8 @@ public class TessTachoActivity extends Activity
 
     			try
     			{
-    				m_startSpeed = speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
-    				m_targetSpeed = speedToMs((long)(Double.parseDouble(targetSpeed.getText().toString())+0.5));
+    				m_startSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
+    				m_targetSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(targetSpeed.getText().toString())+0.5));
         	        alertDialog.dismiss();
     			}
     			catch (NumberFormatException e)
@@ -369,7 +288,6 @@ public class TessTachoActivity extends Activity
         // Acquire a reference to the system Location Manager
         // LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        m_locationManager.removeUpdates( m_locationListener );
         m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
         
     	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
@@ -414,50 +332,16 @@ public class TessTachoActivity extends Activity
 		outState.putString(ACCEL_STATUS_KEY, m_accelStatusLabel.getText().toString());
 	}
 	
-	void onLocationChanged2( Location newLocation )
+	@Override
+	public void onLocationChanged( Location newLocation )
     {
-    	double	lastSpeed, speed, distance, elapsedTime, accel;
-    	Location speedLocation = m_locationList.peek(); 
+    	double	distance;
+    	//double	lastSpeed, speed, distance, elapsedTime, accel;
+    	//Location speedLocation = m_locationList.peek(); 
     	
     	++m_locationFixCount;
     	m_accuracy = newLocation.getAccuracy();
     	setStatus( m_myStatus );
-    	accel = lastSpeed = 0;
-    	
-    	if( speedLocation != null )
-    	{
-        	Location tmpLocation;
-        	
-    		while( speedLocation.distanceTo(newLocation) > m_accuracy )
-    		{
-    			m_locationList.remove();
-    			tmpLocation = m_locationList.peek();
-    			if( tmpLocation == null )
-    				break;
-    			if( tmpLocation.distanceTo(newLocation) < m_accuracy )
-    				break;
-    			speedLocation = tmpLocation;
-
-    		}
-    		distance = speedLocation.distanceTo(newLocation);
-    		elapsedTime = (newLocation.getTime() - speedLocation.getTime() + 500)/1000;
-    		lastSpeed = speedLocation.getSpeed();
-    	}
-    	else
-    	{
-    		distance = 0;
-    		elapsedTime = 0;
-    	}
-    	
-    	if( elapsedTime > 0 && distance >= m_accuracy )
-    	{
-    		speed = (distance / elapsedTime);
-    		accel = (speed - lastSpeed)/elapsedTime;
-    	}
-    	else if( newLocation.hasSpeed() )
-    		speed = newLocation.getSpeed();
-    	else
-    		speed = 0;
     	
 		if( m_distanceLocation != null )
 		{
@@ -465,11 +349,15 @@ public class TessTachoActivity extends Activity
 			m_totalDistance += distance;
 			m_dayDistance += distance;
 		}
+		else
+		{
+			distance = 0;
+		}
 
-		showSpeed( speedToKmh(speed), accel );
+		double speed = getSpeed();
+		double accel = getAccel();
+		showSpeed( GpsProcessor.speedToKmh(speed), accel );
     	
-    	newLocation.setSpeed((float)speed);
-    	m_locationList.add(newLocation);
     	m_distanceLocation = newLocation;
 
     	if( accel<0 )
@@ -501,7 +389,7 @@ public class TessTachoActivity extends Activity
     	if(m_brakeLocation!=null)
     	{
     		double brakeSpeed = m_brakeLocation.getSpeed();
-	        String brakeSpeedStr = TachoWidget.s_speedFormat.format(speedToKmh(brakeSpeed));
+	        String brakeSpeedStr = TachoWidget.s_speedFormat.format(GpsProcessor.speedToKmh(brakeSpeed));
 	        String brakeDistanceStr = TachoWidget.s_dayDistanceFormat.format(m_brakeDistance);
 	        String brakeTimeStr = Long.toString(m_brakeTime);
 	        String brakeCountStr = Long.toString(m_brakeLocationCount);
@@ -579,4 +467,48 @@ public class TessTachoActivity extends Activity
     	AlertDialog alert = builder.create();
     	alert.show();
     }
+	@Override
+	public void onLocationEnabled() {
+    	setStatus( "GPS ist eingeschaltet");
+	}
+	@Override
+	public void onLocationDisabled() {
+    	setStatus( "GPS ist abgeschaltet");
+		showSpeed( 0, 0 );
+	}
+	@Override
+	public void onLocationServiceOn() {
+		setStatus( "GPS Empfang" );
+	}
+	@Override
+	public void onLocationServiceOff() {
+		setStatus( "Kein GPS Empfang" );
+		showSpeed( 0, 0 );
+	}
+	@Override
+	public void onLocationTempOff() {
+		setStatus( "Kurzfristig kein GPS Empfang" );
+	}
+	@Override
+	public void onGpsStatusChanged2(int event) {
+		if( event == GpsStatus.GPS_EVENT_STARTED )
+        	setStatus( "GPS gestartet");
+		else if( event == GpsStatus.GPS_EVENT_STOPPED )
+        	setStatus( "GPS gestoppt");
+		else if( event == GpsStatus.GPS_EVENT_FIRST_FIX )
+        	setStatus( "GPS erster Fix");
+		else if( event == GpsStatus.GPS_EVENT_SATELLITE_STATUS  )
+		{
+			int Satellites = 0;
+			int SatellitesInFix = 0;
+			for (GpsSatellite sat : m_locationManager.getGpsStatus(null).getSatellites())
+			{
+				if(sat.usedInFix())
+					SatellitesInFix++;              
+
+				Satellites++;
+			}
+			setStatus( "GPS Satelliten: " + Integer.toString(SatellitesInFix) + "/" + Integer.toString(Satellites) );
+		}
+	}
 }
