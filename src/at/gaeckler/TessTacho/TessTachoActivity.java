@@ -1,8 +1,6 @@
 package at.gaeckler.TessTacho;
 
 import java.text.DecimalFormat;
-import java.util.LinkedList;
-import java.util.Queue;
 
 import at.gaeckler.TessTacho.R;
 import at.gaeckler.gps.GpsActivity;
@@ -37,9 +35,7 @@ public class TessTachoActivity extends GpsActivity
 	private TachoWidget				m_theTacho = null;
 	private String					m_myStatus = "Willkommen";
 	private long					m_locationFixCount = 0;
-	LocationManager			m_locationManager;
-	private GpsStatus.Listener		m_gpsStatusListener;
-	private Queue<Location>			m_locationList = new LinkedList<Location>();
+	LocationManager					m_locationManager;
 	private Location				m_distanceLocation = null;
 
 	private Location				m_brakeLocation = null;
@@ -154,7 +150,8 @@ public class TessTachoActivity extends GpsActivity
         // Acquire a reference to the system Location Manager
         m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-          showSpeed( 0, 0 );
+        createGpsTimer(100);
+        showSpeed( 0, 0 );
 	}
 
     @Override
@@ -288,8 +285,6 @@ public class TessTachoActivity extends GpsActivity
         // Acquire a reference to the system Location Manager
         // LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
-        
     	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
         SharedPreferences.Editor editor = settings.edit();
         editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
@@ -448,25 +443,6 @@ public class TessTachoActivity extends GpsActivity
     	m_statusLabel.setText( text + " " + s_accuracyFormat.format(m_accuracy) + " " + Long.toString(m_locationFixCount) );
     }
 
-    private void showMessage( String title, String message, final boolean terminate )
-    {
-    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    	builder.setMessage(message)
-    		   .setTitle(title)
-    	       .setCancelable(false)
-    	       .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
-    	           public void onClick(DialogInterface dialog, int id) {
-    	                dialog.cancel();
-    	                if( terminate )
-    	                {
-    	                	finish();
-    	                }
-    	           }
-    	       })
-    	       .setIcon(R.drawable.icon);
-    	AlertDialog alert = builder.create();
-    	alert.show();
-    }
 	@Override
 	public void onLocationEnabled() {
     	setStatus( "GPS ist eingeschaltet");
@@ -510,5 +486,10 @@ public class TessTachoActivity extends GpsActivity
 			}
 			setStatus( "GPS Satelliten: " + Integer.toString(SatellitesInFix) + "/" + Integer.toString(Satellites) );
 		}
+	}
+
+	@Override
+	public void onPermissionError() {
+    	showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
 	}
 }

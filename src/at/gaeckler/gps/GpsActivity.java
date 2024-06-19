@@ -3,7 +3,10 @@ package at.gaeckler.gps;
 import java.util.concurrent.locks.ReentrantLock;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.location.GpsSatellite;
 import android.location.GpsStatus;
 import android.location.Location;
@@ -12,11 +15,12 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import at.gaeckler.TessTacho.R;
 
 public abstract class GpsActivity extends Activity {
 
-	private CountDownTimer		m_gpsTimer = null;
-	private LocationManager		m_locationManager = null;
+	CountDownTimer		m_gpsTimer = null;
+	LocationManager		m_locationManager = null;
 	private LocationListener	m_locationListener = null;
 	private GpsStatus.Listener	m_gpsStatusListener = null;
 	private final GpsProcessor	m_processor = new GpsProcessor();
@@ -28,12 +32,39 @@ public abstract class GpsActivity extends Activity {
 	public abstract void onLocationTempOff();
 	public abstract void onGpsStatusChanged2(int event);
 	public abstract void onLocationChanged( Location newLocation );
+	public abstract void onPermissionError();
 	
-	/** Called when the activity is first created. */
+    public void showMessage( String title, String message, final boolean terminate )
+    {
+    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    	builder.setMessage(message)
+    		   .setTitle(title)
+    	       .setCancelable(false)
+    	       .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
+    	           public void onClick(DialogInterface dialog, int id) {
+    	                dialog.cancel();
+    	                if( terminate )
+    	                {
+    	                	finish();
+    	                }
+    	           }
+    	       })
+    	       .setIcon(R.drawable.icon);
+    	AlertDialog alert = builder.create();
+    	alert.show();
+    }
+
+    /** Called when the activity is first created. */
 	@Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+
+        if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
+        {
+        	onPermissionError();
+        	return;
+        }
 
         // Acquire a reference to the system Location Manager
         m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
@@ -98,7 +129,7 @@ public abstract class GpsActivity extends Activity {
 	    createGpsTimer(1000);
     }
 	
-	private void createGpsTimer( int interval )
+	public void createGpsTimer( int interval )
 	{
 		if (m_gpsTimer!=null)
 		{
