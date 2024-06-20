@@ -21,7 +21,7 @@ https://www.gäckler.de/Software/software.htm (in Deutschland)
 
 geladen werden.
 
-                                      ===
+---
 
 To build the package I used Android Developer Tools v22.6.2-1085508. The 
 compiled package can be downloaded from
