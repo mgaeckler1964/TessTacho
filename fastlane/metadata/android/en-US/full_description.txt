@@ -1,0 +1,7 @@
+This app is used to measure speed, acceleration and brakes.
+
+You can enter a start and a target speed and the program shows the time and 
+distance required.
+
+The same is when you stop your machine. This is usefull to improve your skills
+when driving a motorcycle to learn an emergency brake.
