@@ -16,11 +16,17 @@ import android.os.CountDownTimer;
 
 public abstract class GpsActivity extends Activity {
 
+	public static final int AUTO_GPS = 0;
+	public static final int FAST_GPS = 100;
+	public static final int NORMAL_GPS = 1000;
+	public static final int SLOW_GPS = 10000;
+	
 	CountDownTimer		m_gpsTimer = null;
 	LocationManager		m_locationManager = null;
 	private LocationListener	m_locationListener = null;
 	private GpsStatus.Listener	m_gpsStatusListener = null;
 	private final GpsProcessor	m_processor = new GpsProcessor();
+	private int m_gpsInterval = 0;
 
 	public abstract void onLocationEnabled();
 	public abstract void onLocationDisabled();
@@ -103,7 +109,7 @@ public abstract class GpsActivity extends Activity {
 	    m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, m_locationListener);
 	    m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, m_locationListener);
 
-	    createGpsTimer(1000);
+	    createGpsTimer(NORMAL_GPS);
     }
 	
 	public void createGpsTimer( int interval )
@@ -112,24 +118,46 @@ public abstract class GpsActivity extends Activity {
 		{
 			m_gpsTimer.cancel();
 		}
-	    m_gpsTimer = new CountDownTimer(100000000, interval) {
-	    	
-	    	private Location m_lastKnown=null;
-	
-	    	@Override
-	    	public void onTick(long millisUntilFinished) {
-	    		Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-	    		if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
-	    		{
-	    			lockLocationChanged(newLocation);
-	    		}
-	    	}
+		if( interval > 0 )
+		{
+			m_gpsInterval = interval;
+		    m_gpsTimer = new CountDownTimer(100000000, interval) {
+		    	
+		    	private Location m_lastKnown=null;
 		
-	    	@Override
-	    	public void onFinish() {
-	    		m_gpsTimer.start();
-	    	}
-		}.start();
+		    	@Override
+		    	public void onTick(long millisUntilFinished) {
+		    		Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+		    		if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
+		    		{
+		    			lockLocationChanged(newLocation);
+		    		}
+		    	}
+			
+		    	@Override
+		    	public void onFinish() {
+		    		m_gpsTimer.start();
+		    	}
+			}.start();
+		}
+		else
+		{
+			m_gpsTimer = null;
+			m_gpsInterval = 0;
+		}
+	}
+	public void removeGpsTimer()
+	{
+		if (m_gpsTimer!=null)
+		{
+			m_gpsTimer.cancel();
+			m_gpsTimer = null;
+			m_gpsInterval = 0;
+		}
+	}
+	public int getInterval( )
+	{
+		return m_gpsInterval;
 	}
 	private final ReentrantLock m_lock = new ReentrantLock();
 	void lockLocationChanged( Location newLocation )

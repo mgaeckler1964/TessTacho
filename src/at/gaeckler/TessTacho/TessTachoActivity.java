@@ -167,7 +167,7 @@ public class TessTachoActivity extends GpsActivity
         // Acquire a reference to the system Location Manager
         m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        createGpsTimer(100);
+        createGpsTimer(FAST_GPS);
         showSpeed( 0, 0 );
 	}
 
