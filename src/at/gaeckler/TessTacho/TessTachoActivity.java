@@ -77,6 +77,7 @@ public class TessTachoActivity extends GpsActivity
 	public  static final String			BRAKE_STATUS_KEY = "brakeStatus";
 
 	public  static final String			MAX_TACHO_SPEED_KEY = "maxTachoSpeed"; 
+	public  static final String			RESOLUTION_KEY = "gpsSpeedResolution";
 	
 	private static final String			DAY_DISTANCE_KEY = "dayDistance";
 	private static final String			TOTAL_DISTANCE_KEY = "totalDistance";
@@ -254,6 +255,7 @@ public class TessTachoActivity extends GpsActivity
             	intent.putExtra(BRAKE_SPEED_KEY, m_brakeLocation.getSpeed());
             	intent.putExtra(BRAKE_DISTANCE_KEY, m_brakeDistance);
         	}
+        	intent.putExtra(RESOLUTION_KEY, getResolution());
         	startActivity( intent );
     		break;
     	}
@@ -348,8 +350,6 @@ public class TessTachoActivity extends GpsActivity
 	public void onLocationChanged( Location newLocation )
     {
     	double	distance;
-    	//double	lastSpeed, speed, distance, elapsedTime, accel;
-    	//Location speedLocation = m_locationList.peek(); 
     	
     	++m_locationFixCount;
     	m_accuracy = newLocation.getAccuracy();

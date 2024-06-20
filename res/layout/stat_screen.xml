@@ -5,7 +5,6 @@
     android:orientation="vertical" >
 
     <TextView
-        android:id="@+id/textView1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Max Speed:" />
@@ -17,7 +16,6 @@
         android:text="TextView" />
 
     <TextView
-        android:id="@+id/textView2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Max Acceleration:" />
@@ -30,7 +28,6 @@
 
 
     <TextView
-        android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Max Retardation:" />
@@ -42,7 +39,6 @@
         android:text="TextView" />
 
     <TextView
-        android:id="@+id/textView4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Retardation Speed:" />
@@ -54,13 +50,23 @@
         android:text="TextView" />
 
     <TextView
-        android:id="@+id/textView5"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Brake Distance:" />
 
     <TextView
         android:id="@+id/brakeDistanceView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TextView" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Resolution:" />
+
+    <TextView
+        android:id="@+id/resolutionView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="TextView" />

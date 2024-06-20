@@ -16,6 +16,7 @@ public class GpsProcessor {
 	double					m_curBearing = 0;
 	double					m_speed = 0;
 	double					m_accel = 0;
+	double					m_resolution = 99999999;
 
 	public static long speedToKmh( double speedMs )
 	{
@@ -53,6 +54,10 @@ public class GpsProcessor {
 	public int getNumLocations()
 	{
 		return m_locationList.size();
+	}
+	public double getResolution()
+	{
+		return m_resolution;
 	}
 
 	public boolean onLocationChanged( Location newLocation )
@@ -112,7 +117,6 @@ public class GpsProcessor {
     				break;
     			speedLocation = tmpLocation;
     		}
-    		
     	}
 
     	// find the position to calculate the speed
@@ -138,8 +142,7 @@ public class GpsProcessor {
     	if( speedLocation != null )
     	{
 			sDistance = speedLocation.distanceTo(newLocation);
-			elapsedTime = newLocation.getTime() - speedLocation.getTime();
-			elapsedTime /= 1000;
+			elapsedTime = (newLocation.getTime() - speedLocation.getTime())/1000;
 			lastSpeed = speedLocation.getSpeed();
 	    }
     	else
@@ -150,12 +153,16 @@ public class GpsProcessor {
     	
     	double speed, accel;
     	
+    	if( elapsedTime > 0 && m_resolution >elapsedTime)
+    	{
+    		m_resolution = elapsedTime;
+    	}
     	if( elapsedTime > 0 && sDistance >= m_accuracy )
     	{
     		speed = sDistance / elapsedTime; 
     		accel = (speed - lastSpeed)/elapsedTime;
     	}
-    	else if( newLocation.hasSpeed())
+    	else if( newLocation.hasSpeed() )
     	{
     		speed = newLocation.getSpeed();
     		if(elapsedTime>0)

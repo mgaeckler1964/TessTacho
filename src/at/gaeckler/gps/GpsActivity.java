@@ -160,14 +160,23 @@ public abstract class GpsActivity extends Activity {
 		return m_gpsInterval;
 	}
 	private final ReentrantLock m_lock = new ReentrantLock();
+	private Location m_lastLocation = null;
 	void lockLocationChanged( Location newLocation )
     {
 		m_lock.lock();
 		try {
-		    if( m_processor.onLocationChanged(newLocation) )
-		    {
-				onLocationChanged( newLocation );
-		    }
+			if (m_lastLocation == null || 
+				newLocation.getTime() != m_lastLocation.getTime() || 
+				newLocation.getAltitude() != m_lastLocation.getAltitude() ||
+				newLocation.getLongitude() != m_lastLocation.getLongitude() ||
+				newLocation.getLatitude() != m_lastLocation.getLatitude() )
+			{
+				m_lastLocation = newLocation;
+				if( m_processor.onLocationChanged(newLocation) )
+			    {
+					onLocationChanged( newLocation );
+			    }
+			}
 		} finally {
 			m_lock.unlock();
 		}
@@ -221,5 +230,9 @@ public abstract class GpsActivity extends Activity {
 	public double getAccel()
 	{
 		return m_processor.getAccel();
+	}
+	public double getResolution()
+	{
+		return m_processor.getResolution();
 	}
 }

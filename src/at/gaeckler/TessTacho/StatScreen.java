@@ -58,7 +58,13 @@ public class StatScreen extends Activity {
 	        String brakeDistanceStr = TachoWidget.s_dayDistanceFormat.format(brakeDistance);
 	        brakeDistanceView.setText(brakeDistanceStr);
         }
-}
+        {
+	    	TextView resolutionView = (TextView)findViewById( R.id.resolutionView );
+	        double resolution = getIntent().getDoubleExtra(TessTachoActivity.RESOLUTION_KEY, 0 );
+	        String resolutionStr = Double.toString(resolution);
+	        resolutionView.setText(resolutionStr);
+        }
+	}
 
 	@Override
     public void onBackPressed()
