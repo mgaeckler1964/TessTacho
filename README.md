@@ -30,4 +30,4 @@ https://www.gaeckler.at/Software/software.htm (in Vienna)
 
 or
 
-https://www.gäckler.de/Software/software.htm (in Germany)
+http://www.gäckler.de/Software/software.htm (in Germany)
