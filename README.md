@@ -7,7 +7,7 @@ Start- und Zielgeschwindigkeit eingeben und auch hier mißt das Programm die
 Zeit und die erforderliche Wegstecke.
 
 Bei einigen Androidversionen kann es vorkommen, daß ihr die Berechtigung zum 
-Ermitteln des Standords manuel vergeben müßt. Andernfalls beendet das Programm 
+Ermitteln des Standorts manuel vergeben müßt. Andernfalls beendet das Programm 
 sofort mit einem Fehler.
 
 Zum Übersetzen der Quellen habe ich Android Developer Tools v22.6.2-1085508 
