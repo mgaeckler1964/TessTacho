@@ -7,75 +7,69 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Max Speed:" />
+        android:text="@string/maxSpeedLabel" />
 
     <TextView
         android:id="@+id/maxSpeedView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="wrap_content" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Max Acceleration:" />
+        android:text="@string/maxAccelLabel" />
     
     <TextView
         android:id="@+id/maxAccelView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="wrap_content" />
 
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Max Retardation:" />
+        android:text="@string/maxBrakeLabel" />
 
     <TextView
         android:id="@+id/maxBrakeView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="wrap_content" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retardation Speed:" />
+        android:text="@string/brakeSpeedLabel" />
 
     <TextView
         android:id="@+id/brakeSpeedView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="wrap_content" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Brake Distance:" />
+        android:text="@string/brakeDistanceLabel" />
 
     <TextView
         android:id="@+id/brakeDistanceView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="wrap_content" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Resolution:" />
+        android:text="@string/resolutionLabel" />
 
     <TextView
         android:id="@+id/resolutionView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="wrap_content" />
 
     <Button
         android:id="@+id/quitButton"
         style="?android:attr/buttonStyleSmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button" />
+        android:text="@string/quitLabel" />
 
 </LinearLayout>

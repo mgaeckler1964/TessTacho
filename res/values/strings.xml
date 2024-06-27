@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TessTacho</string>
-    <string name="app_version">2.6.20</string>
+    <string name="app_version">2.6.27</string>
     
     <string name="textView1">Anfangsgeschwindigkeit</string>
     <string name="textView2">Zielgeschwindigkeit</string>
@@ -14,4 +14,14 @@
     <string name="statusLabel">Status</string>
     <string name="brakeStatus">Bremsen</string>
     <string name="accelStatus">Beschleunigung</string>
+    
+    <string name="maxSpeedLabel">Höchstgeschwindigkeit:</string>
+    <string name="maxAccelLabel">Höchste Beschleunigung:</string>
+    <string name="maxBrakeLabel">Höchste Verzögerung:</string>
+    <string name="brakeSpeedLabel">Bremsgeschwindigkeit:</string>
+    <string name="brakeDistanceLabel">Bremsweg:</string>
+    <string name="resolutionLabel">GPS Auflösung:</string>
+    <string name="quitLabel">Zurück</string>
+    
+    
 </resources>

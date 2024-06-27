@@ -4,9 +4,11 @@
 package at.gaeckler.TessTacho;
 
 import at.gaeckler.TessTacho.R;
-
 import android.app.Activity;
 import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
 import android.widget.TextView;
 
 /**
@@ -63,6 +65,16 @@ public class StatScreen extends Activity {
 	        double resolution = getIntent().getDoubleExtra(TessTachoActivity.RESOLUTION_KEY, 0 );
 	        String resolutionStr = Double.toString(resolution);
 	        resolutionView.setText(resolutionStr);
+        }
+        {
+        	Button btn = (Button) findViewById( R.id.quitButton );
+        	btn.setOnClickListener( new OnClickListener() {
+				
+				@Override
+				public void onClick(View arg0) {
+					finish();
+				}
+			});
         }
 	}
 
