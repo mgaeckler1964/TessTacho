@@ -182,6 +182,10 @@ public abstract class GpsActivity extends Activity {
 		}
     }
 
+	protected void simulateLocationFix(Location newLocation)
+	{
+		lockLocationChanged( newLocation );
+	}
 	public Iterable<GpsSatellite> getSatellites()
 	{
 		return m_locationManager.getGpsStatus(null).getSatellites();
