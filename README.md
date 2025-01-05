@@ -17,7 +17,7 @@ https://www.gaeckler.at/Software/software.htm#TessTacho (in Wien)
 
 oder hier
 
-https://www.gäckler.de/Software/software.htm#TessTacho (in Deutschland)
+http://www.gäckler.de/Software/software.htm#TessTacho (in Deutschland)
 
 geladen werden.
 
