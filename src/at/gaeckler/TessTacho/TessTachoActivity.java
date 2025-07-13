@@ -35,7 +35,7 @@ public class TessTachoActivity extends GpsActivity
 	private TachoWidget				m_theTacho = null;
 	private String					m_myStatus = "Willkommen";
 	private long					m_locationFixCount = 0;
-	LocationManager					m_locationManager;
+	private LocationManager			m_locationManager;
 	private Location				m_distanceLocation = null;
 
 	private Location				m_brakeLocation = null;
@@ -50,8 +50,8 @@ public class TessTachoActivity extends GpsActivity
 	private long					m_accelLocationCount =0;
 	private boolean					m_inaccel = false;
 	
-	double							m_startSpeed = 0;
-	double							m_targetSpeed = 0;
+	double							m_startSpeed = 0;	// default access
+	double							m_targetSpeed = 0;	// default access
 	private double 					m_maxAccel = 0;
 	private double 					m_maxBrake = 0;
 	private double					m_totalDistance = 0.0;
@@ -265,7 +265,7 @@ public class TessTachoActivity extends GpsActivity
     		String version = getString(R.string.app_version);
     		showMessage(
     			name, 
-    			name + " "+version+"\nVon Martin für Tess.\n(c) 2013-2024 by Martin Gäckler\nhttps://www.gaeckler.at/",
+    			name + " "+version+"\nVon Martin für Tess.\n(c) 2013-2025 by Martin Gäckler\nhttps://www.gaeckler.at/",
     			false
     		);
     		break;
@@ -305,6 +305,7 @@ public class TessTachoActivity extends GpsActivity
     @Override
     public void onPause()
     {
+        m_wakeLock.release();
         savePreferences();
         super.onPause();
     }
@@ -313,7 +314,6 @@ public class TessTachoActivity extends GpsActivity
 	public void onDestroy()
 	{
 		savePreferences();
-        m_wakeLock.release();
         super.onDestroy();
     }
 	@Override
