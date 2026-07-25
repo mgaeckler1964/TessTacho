@@ -11,11 +11,15 @@ public class GpsProcessor {
 	static final int MIN_BEARING_COUNT = 2;
 	static final int MIN_LOCATION_COUNT = 20;
 
+	boolean					m_ignoreAccuracy = false;
 	double					m_accuracy = 0.0;
 	Queue<Location>			m_locationList = new LinkedList<Location>();
+	long					m_breakTime = 0;
+	Location				m_startBreak = null;
 	double					m_curBearing = 0;
 	double					m_speed = 0;
 	double					m_accel = 0;
+	String					m_accelStr = "";
 	double					m_resolution = 99999999;
 
 	public static long speedToKmh( double speedMs )
@@ -27,6 +31,17 @@ public class GpsProcessor {
 		return (double)speedKmh / 3.6;
 	}
 
+	public long getBreakTime()
+	{
+		return m_breakTime + (
+			m_startBreak != null ? lastLocation().getTime()-m_startBreak.getTime() 
+								 :0);
+	}
+	public void setBreakTime( long breakTime )
+	{
+		m_breakTime = breakTime;
+		m_startBreak = null;
+	}
 	public double getCurBearing()
 	{
 		return m_curBearing;
@@ -39,11 +54,22 @@ public class GpsProcessor {
 	{
 		return m_accel;
 	}
+	public String getAccelStr()
+	{
+		return m_accelStr;
+	}
 	public double getAccuracy()
 	{
 		return m_accuracy;
 	}
-	
+	public boolean getIgnoreAccuracy()
+	{
+		return m_ignoreAccuracy;
+	}
+	public void setIgnoreAccuracy(boolean ignoreAcuracy)
+	{
+		m_ignoreAccuracy = ignoreAcuracy;
+	}
 	public boolean hasLocation() {
 		return m_locationList.peek() != null;
 	}
@@ -76,7 +102,7 @@ public class GpsProcessor {
     		int countPoints = 0;
 	    	for( Location curLoc : m_locationList )
 	    	{
-	    		if( curLoc.distanceTo(newLocation) >= m_accuracy )
+	    		if( m_ignoreAccuracy || curLoc.distanceTo(newLocation) >= m_accuracy )
 	    		{
 	    			final double bearing = curLoc.bearingTo(newLocation);
 	    			if( bearing < minBearing )
@@ -106,7 +132,10 @@ public class GpsProcessor {
     	if( speedLocation != null )
     	{
     		long maxTime = newLocation.getTime() - MAX_AGE_MS;
-    		while( (speedLocation.distanceTo(newLocation) > m_accuracy*2 || speedLocation.getTime() < maxTime) 
+    		while( (
+    					speedLocation.distanceTo(newLocation) > m_accuracy*2 
+    					|| speedLocation.getTime() < maxTime
+    				) 
     				&& m_locationList.size() > MIN_LOCATION_COUNT)
     		{
     			m_locationList.remove();
@@ -124,19 +153,36 @@ public class GpsProcessor {
     	{
     		long maxTime = newLocation.getTime() - 2000;
 			speedLocation = null;
+			double maxDistance = 0;
 			for( Location curLoc : m_locationList )
 			{
 				if( curLoc.getTime() < maxTime )
 				{
 					break;
 				}
-	    		if( curLoc.distanceTo(newLocation) > m_accuracy )
+				final double distance = curLoc.distanceTo(newLocation); 
+	    		if( distance >= m_accuracy )
 	    		{
 	    			speedLocation = curLoc;
 	    			break;
 	    		}
+	    		if( distance > maxDistance)
+	    		{
+	    			maxDistance = distance;
+	    		}
 			}
-    	}
+			if( speedLocation == null && m_ignoreAccuracy )
+			{
+				for( Location curLoc : m_locationList )
+				{
+		    		if( curLoc.distanceTo(newLocation) >= maxDistance )
+		    		{
+		    			speedLocation = curLoc;
+		    			break;
+		    		}
+				}
+			}
+		}
     	
     	// calculate the current speed
     	if( speedLocation != null )
@@ -153,14 +199,17 @@ public class GpsProcessor {
     	
     	double speed, accel;
     	
-    	if( elapsedTime > 0 && m_resolution >elapsedTime)
+    	if( elapsedTime > 0 && m_resolution > elapsedTime)
     	{
     		m_resolution = elapsedTime;
     	}
-    	if( elapsedTime > 0 && sDistance >= m_accuracy )
+    	if( elapsedTime > 0 && (m_ignoreAccuracy || sDistance >= m_accuracy) )
     	{
     		speed = sDistance / elapsedTime; 
     		accel = (speed - lastSpeed)/elapsedTime;
+    		m_accelStr = ">" + Double.toString(accel) + "=" + 
+    		Double.toString(lastSpeed) + "-" + Double.toString(speed) + "/" + 
+    				Double.toString(elapsedTime);  
     	}
     	else if( newLocation.hasSpeed() )
     	{
@@ -168,9 +217,13 @@ public class GpsProcessor {
     		if(elapsedTime>0)
     		{
     			accel = (speed - lastSpeed)/elapsedTime;
+        		m_accelStr = ">" + Double.toString(accel) + "=" + 
+    			Double.toString(lastSpeed) + "->" + Double.toString(speed) + "/" + 
+        				Double.toString(elapsedTime);  
     		}
     		else
     		{
+        		m_accelStr = "no time1_" + Integer.toString(m_locationList.size());  
     			accel = 0;
     		}
     	}
@@ -178,15 +231,28 @@ public class GpsProcessor {
     	{
     		speed = 0;
     		accel = 0;
+    		m_accelStr = "no time2_" + Integer.toString(m_locationList.size());
     	}
 
-    	if ( accel < 200 && accel > -200 )
+    	if ( (accel < 200 && accel > -200) )
     	{
     		m_speed = speed;
     		m_accel = accel;
     		newLocation.setSpeed((float)speed);
     		m_locationList.add(newLocation);
     		
+    		if( m_speed < 1 )
+    		{
+    			if( m_startBreak == null )
+    			{
+    				m_startBreak = speedLocation;
+    			}
+    		}
+    		else if( m_startBreak != null ) 
+    		{
+    			m_breakTime += newLocation.getTime()-m_startBreak.getTime();
+    			m_startBreak = null;
+    		}
     		return true;
     	}
     	return false;

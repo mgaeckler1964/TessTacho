@@ -1,5 +1,11 @@
 package at.gaeckler.gps;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.concurrent.locks.ReentrantLock;
 
 import android.app.Activity;
@@ -13,13 +19,19 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Environment;
 
 public abstract class GpsActivity extends Activity {
+
+	protected static final String	NAME_KEY = "name";
 
 	public static final int AUTO_GPS = 0;
 	public static final int FAST_GPS = 100;
 	public static final int NORMAL_GPS = 1000;
 	public static final int SLOW_GPS = 10000;
+
+	private static final double MAX_SPEED = 100;
+	private static final double MAX_ACCEL = 100;
 	
 	CountDownTimer		m_gpsTimer = null;
 	LocationManager		m_locationManager = null;
@@ -87,7 +99,7 @@ public abstract class GpsActivity extends Activity {
 			@Override
 			public void onLocationChanged(Location location)
 			{
-				lockLocationChanged( location );
+				lockLocationChanged( location, true );
 			}
         };
 
@@ -123,6 +135,7 @@ public abstract class GpsActivity extends Activity {
 			m_gpsInterval = interval;
 		    m_gpsTimer = new CountDownTimer(100000000, interval) {
 		    	
+		    	/// TODO remove 
 		    	private Location m_lastKnown=null;
 		
 		    	@Override
@@ -130,7 +143,7 @@ public abstract class GpsActivity extends Activity {
 		    		Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 		    		if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
 		    		{
-		    			lockLocationChanged(newLocation);
+		    			lockLocationChanged(newLocation, true);
 		    		}
 		    	}
 			
@@ -159,32 +172,206 @@ public abstract class GpsActivity extends Activity {
 	{
 		return m_gpsInterval;
 	}
-	private final ReentrantLock m_lock = new ReentrantLock();
-	private Location m_lastLocation = null;
-	void lockLocationChanged( Location newLocation )
+
+    private File				m_file = null;
+	private FileOutputStream	m_fileos = null;
+	private PrintWriter			m_pos = null; 
+
+	private static final String TRACK_FILE = "temp.gak.gps.txt";
+
+	private static File getExternalFileName( String filename )
     {
-		m_lock.lock();
-		try {
-			if (m_lastLocation == null || 
-				newLocation.getTime() != m_lastLocation.getTime() || 
-				newLocation.getAltitude() != m_lastLocation.getAltitude() ||
-				newLocation.getLongitude() != m_lastLocation.getLongitude() ||
-				newLocation.getLatitude() != m_lastLocation.getLatitude() )
+        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+
+        System.out.println(dir.getPath());
+        if( !dir.exists() )
+        {
+        	dir.mkdir();
+        }
+        File file = new File(dir, filename);
+        System.out.println(file.getPath());
+        
+        return file;
+    }
+	private void openGPSfileOS() throws IOException
+	{
+		m_file = getExternalFileName(TRACK_FILE);
+		m_file.createNewFile();
+
+		m_fileos = new FileOutputStream(m_file, true);
+		m_pos = new PrintWriter(m_fileos); 
+	}
+	private void closeGPSfileOS() throws IOException
+	{
+		if( m_pos != null )
+		{
+			m_pos.close();
+			m_pos = null;
+		}
+		if( m_fileos != null )
+		{
+			m_fileos.close();
+			m_fileos = null;
+		}
+		
+	}
+	private void appendTrackPoint(Location loc)
+	{
+        try
+		{
+        	if( m_pos == null )
+        	{
+        		openGPSfileOS();
+        	}
+			m_pos.println(locationString(loc, true));
+			m_pos.flush();
+			m_fileos.flush();
+		}
+		catch( Exception e)
+		{
+			// ignore
+		}
+    }
+
+	public static boolean between( double min, double cur, double max )
+	{
+		return ( min <= cur && cur <= max );
+	}
+	public void readTrackPoints()
+	{
+		try 
+		{
+			if( m_file == null )
 			{
-				m_lastLocation = newLocation;
-				if( m_processor.onLocationChanged(newLocation) )
-			    {
-					onLocationChanged( newLocation );
-			    }
+				m_file = getExternalFileName(TRACK_FILE);
 			}
-		} finally {
-			m_lock.unlock();
+			if( m_file != null )
+			{
+				BufferedReader  reader = new BufferedReader(new FileReader(m_file));
+			
+				while( true ) 
+				{
+					String line = reader.readLine();
+					if( line == null )
+					{
+						break;
+					}
+					Location newLocation = locationString(line,true);
+
+					// 14.4426064, 48.3637592, 
+					// 14.4481877, 48.3570682
+/*					
+					double lon = newLocation.getLongitude(); 
+					double lat = newLocation.getLatitude();
+
+					if( between( 14.44, lon, 14.46 )
+					&&  between( 48.350, lat, 48.37 ) )
+					{
+						System.out.println("I'm in");
+					}
+*/
+					lockLocationChanged(newLocation,false);
+				}
+
+				reader.close();
+			}
+		} 
+		catch (IOException e) 
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	static private double getEllapsedTime(Location loc1, Location loc2)
+	{
+		return (double)(loc2.getTime()-loc1.getTime())/1000.0;
+	}
+	static private double getSpeed(Location loc1, Location loc2)
+	{
+		return (double)loc1.distanceTo(loc2) / getEllapsedTime(loc1, loc2);
+	}
+	static private double getAccel(Location loc1, Location loc2)
+	{
+		return (double)(loc2.getSpeed()-loc1.getSpeed()) / getEllapsedTime(loc1, loc2);
+	}
+	private final ReentrantLock m_lock = new ReentrantLock();
+	private Location[] m_lastLocations;
+	private boolean m_goodGps = false;
+	private long m_startTime = 0;
+	private static final String m_provider = "gps";
+	
+	void lockLocationChanged( Location newLocation, boolean appendTrack )
+    {
+		if( m_provider==null || newLocation.getProvider().equalsIgnoreCase("GPS") )
+		{
+			m_lock.lock();
+			try {
+				if( appendTrack )
+				{
+					appendTrackPoint(newLocation);
+				}
+				
+				if( m_startTime==0 || m_lastLocations == null || 
+						(!m_goodGps && (newLocation.getTime() - m_startTime) > 60000))
+				{
+					m_startTime = newLocation.getTime();
+					m_lastLocations = new Location[2];
+					m_goodGps = false;
+				}
+	
+				if( m_lastLocations[0] == null )
+				{
+					m_lastLocations[0] = newLocation;
+				}
+				else if( m_lastLocations[1] == null )
+				{
+					if(m_lastLocations[0].getTime() < newLocation.getTime() )
+					{
+						if( !newLocation.hasSpeed() )
+						{
+							double speed = getSpeed(m_lastLocations[0],newLocation);
+							if( speed < MAX_SPEED )
+							{
+								newLocation.setSpeed((float) speed);
+							}
+							else
+							{
+								newLocation = null;
+							}
+						}
+						m_lastLocations[1] = newLocation;
+					}
+				}
+				else
+				{
+					if(m_lastLocations[1].getTime() < newLocation.getTime() )
+					{
+						double speed = getSpeed(m_lastLocations[1],newLocation);
+						newLocation.setSpeed((float) speed);
+						double accel = getAccel(m_lastLocations[1], newLocation ); 
+	
+						if(speed < MAX_SPEED && accel < MAX_ACCEL )
+						{
+							m_lastLocations[0] = m_lastLocations[1];
+							m_lastLocations[1] = newLocation;
+							m_goodGps = true;
+							if( m_processor.onLocationChanged(newLocation) )
+						    {
+								onLocationChanged( newLocation );
+						    }
+						}
+					}
+				}
+			} finally {
+				m_lock.unlock();
+			}
 		}
     }
 
 	protected void simulateLocationFix(Location newLocation)
 	{
-		lockLocationChanged( newLocation );
+		lockLocationChanged( newLocation, false );
 	}
 	public Iterable<GpsSatellite> getSatellites()
 	{
@@ -199,7 +386,16 @@ public abstract class GpsActivity extends Activity {
 
 		m_locationManager.removeUpdates( m_locationListener );
 		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
-        
+
+		try 
+		{
+			closeGPSfileOS();
+		} 
+		catch (IOException e) 
+		{
+			// ignore
+		}
+		
         super.onDestroy();
     }
 	
@@ -213,6 +409,14 @@ public abstract class GpsActivity extends Activity {
 		return m_processor.lastLocation();
 	}
 	
+	public boolean getIgnoreAccuracy()
+	{
+		return m_processor.getIgnoreAccuracy();
+	}
+	public void setIgnoreAccuracy(boolean ignoreAcuracy)
+	{
+		m_processor.setIgnoreAccuracy( ignoreAcuracy );
+	}
 	public double getAccuracy()
 	{
 		return m_processor.getAccuracy();
@@ -235,8 +439,89 @@ public abstract class GpsActivity extends Activity {
 	{
 		return m_processor.getAccel();
 	}
+	public String getAccelStr()
+	{
+		return m_processor.getAccelStr();
+	}
 	public double getResolution()
 	{
 		return m_processor.getResolution();
 	}
+	public long getBreakTime()
+	{
+		return m_processor.getBreakTime();
+	}
+	public void setBreakTime( long breakTime )
+	{
+		m_processor.setBreakTime(breakTime);
+	}
+	private static String locationString( Location src, boolean raw )
+	{
+		String result = src.getProvider() + '|' + 
+				Double.toString(src.getLongitude()) + '|' + 
+				Double.toString(src.getLatitude()) + '|' +
+				Double.toString(src.getAltitude());
+		
+		if( raw )
+		{
+			result += '|' + Double.toString(src.getAccuracy()) +
+					  '|' + Long.toString(src.getTime());
+		}
+		return result;
+	}
+	public static String locationString( Location src )
+	{
+		return locationString(src, false);
+	}
+	
+	private static Location locationString( String src, boolean raw )
+	{
+		if(src == null)
+		{
+/*@*/		return null;
+		}
+		String [] elements = src.split("[|]");
+		if(elements.length < 3)
+		{
+/*@*/		return null;
+		}
+		String provider = elements[0];
+		double longitude = Double.parseDouble(elements[1]);
+		double latitude = Double.parseDouble(elements[2]);
+		
+		if( Math.abs(longitude) < 0.01 && Math.abs(latitude) < 0.01)
+		{
+/*@*/		return null;
+		}
+		Location newLocation = new Location(provider);
+		newLocation.setLongitude(longitude);
+		newLocation.setLatitude(latitude);
+		if (elements.length >= 4)
+		{
+			newLocation.setAltitude(Double.parseDouble(elements[3]));;
+		}
+
+		if( raw )
+		{
+			if (elements.length < 6)
+			{
+/*@*/			return null;
+			}
+			newLocation.setAccuracy((float) Double.parseDouble(elements[4]));
+			newLocation.setTime( Long.parseLong(elements[5]) );
+		}
+		else if (elements.length >= 5)
+		{
+			String name = elements[4];
+			Bundle bundle = new Bundle();
+			bundle.putString(NAME_KEY, name);
+			newLocation.setExtras(bundle);
+		}
+		return newLocation;  
+	}
+	public static Location locationString( String src )
+	{
+		return locationString( src, false );
+	}
+
 }
