@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TessTacho</string>
-    <string name="app_version">2.7.27</string>
-    
+    <string name="app_copyright">(c) 2013-2026 by Martin Gäckler</string>
+    <string name="app_url">https://www.gaeckler.at/</string>
+
     <string name="textView1">Anfangsgeschwindigkeit</string>
     <string name="textView2">Zielgeschwindigkeit</string>
 

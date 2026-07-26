@@ -108,9 +108,10 @@ public class TessTachoActivity extends GpsActivity
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        System.out.println("onCreate starts");
         if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
         {
-        	showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
+        	showMessage("TessTacho", "Berechtigung fÃ¼r Standort fehlt!", true);
         	return;
         }
         
@@ -231,20 +232,32 @@ public class TessTachoActivity extends GpsActivity
     	alertDialog.show();    	
     }
 
+	private void showAbout()
+	{
+		String name = getString(R.string.app_name);
+		String version = getString(R.string.app_version);
+		String copyright = getString(R.string.app_copyright);
+		String url = getString(R.string.app_url);
+		showMessage(
+				name,
+				name + " "+version+"\n"+copyright+"\n"+url,
+				false
+		);
+	}
     @Override
     public boolean onOptionsItemSelected( MenuItem item )
     {
     	System.out.println("onOptionsItemSelected " +item.toString());
     	int	itemId = item.getItemId();
-    	switch( itemId )
-    	{
-    	case R.id.exit:
-    		finish();
-            break;
-    	case R.id.accelTest:
-    		configAccelTest();
-    		break;
-    	case R.id.statistics:
+    	if( itemId == R.id.exit )
+		{
+            finish();
+        }
+        else if( itemId == R.id.accelTest )
+		{
+            configAccelTest();
+        }
+        else if( itemId == R.id.statistics )
     	{
         	Intent intent = new Intent( this, StatScreen.class );
         	intent.putExtra(MAX_SPEED_KEY, m_theTacho.getMaxSpeed());
@@ -257,32 +270,22 @@ public class TessTachoActivity extends GpsActivity
         	}
         	intent.putExtra(RESOLUTION_KEY, getResolution());
         	startActivity( intent );
-    		break;
     	}
-    	case R.id.about:
+        else if( itemId == R.id.about )
     	{
-    		String name = getString(R.string.app_name);
-    		String version = getString(R.string.app_version);
-    		showMessage(
-    			name, 
-    			name + " "+version+"\nVon Martin für Tess.\n(c) 2013-2025 by Martin Gäckler\nhttps://www.gaeckler.at/",
-    			false
-    		);
-    		break;
-    	}
+			showAbout();
     	}
 
     	return super.onOptionsItemSelected(item);
     }
     
     @Override
-    public void onOptionsMenuClosed(Menu menu) {
-        super.onOptionsMenuClosed(menu);
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.CUR_DEVELOPMENT) {
-            // Workaround for https://issuetracker.google.com/issues/315761686
-            invalidateOptionsMenu();
-        }
-    }
+	public void onOptionsMenuClosed(Menu menu)
+	{
+		super.onOptionsMenuClosed(menu);
+		// Workaround for https://issuetracker.google.com/issues/315761686
+		invalidateOptionsMenu();
+	}
     
     private void savePreferences()
     {
@@ -507,6 +510,6 @@ public class TessTachoActivity extends GpsActivity
 
 	@Override
 	public void onPermissionError() {
-    	showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
+    	showMessage("TessTacho", "Berechtigung fÃ¼r Standort fehlt!", true);
 	}
 }

@@ -52,7 +52,7 @@ public class TachoWidget extends View
 	public static final DecimalFormat s_speedFormat = new DecimalFormat( "0.0 km/h" );
 	private static final DecimalFormat s_totalDistanceFormat = new DecimalFormat( ",##0" );
 	public static final DecimalFormat s_dayDistanceFormat = new DecimalFormat( "0.0" );
-	public static final DecimalFormat s_accelFormat = new DecimalFormat( "0.0 m/s²" );
+	public static final DecimalFormat s_accelFormat = new DecimalFormat( "0.0 m/sÂ²" );
 
 	public void setMaxTachoSpeed( double newSpeed )
 	{

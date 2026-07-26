@@ -20,7 +20,7 @@ import android.location.LocationProvider;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
-
+import android.location.GnssStatus;
 public abstract class GpsActivity extends Activity {
 
 	protected static final String	NAME_KEY = "name";
@@ -36,10 +36,58 @@ public abstract class GpsActivity extends Activity {
 	CountDownTimer		m_gpsTimer = null;
 	LocationManager		m_locationManager = null;
 	private LocationListener	m_locationListener = null;
-	private GpsStatus.Listener	m_gpsStatusListener = null;
+    //private GpsStatus.Listener	m_gpsStatusListener = null;
+
+    private GnssStatus.Callback	m_gnssStatusListener = null;
 	private final GpsProcessor	m_processor = new GpsProcessor();
 	private int m_gpsInterval = 0;
 
+	private static final String	CALIBRATION_KEY = "calibrationMode";
+	private static final String	FIX_COUNT_KEY = "fixCount";
+	private static final String	SUM_LONGITUDE_KEY = "sumLongitude";
+	private static final String	SUM_LATITUDE_KEY = "sumLatitude";
+	private static final String	SUM_ALTITUDE_KEY = "sumAltitude";
+
+	private boolean	m_calibration = false;
+	private double	m_sumLongitude = 0;
+	private double	m_sumLatitude = 0;
+	private double	m_sumAltitude = 0;
+	private long	m_locationFixCount = 0;
+
+
+	public boolean isCalibrationMode()
+	{
+		return m_calibration;
+	}
+	public void enableCalibartion()
+	{
+    	m_calibration = true;
+    	m_sumLongitude = 0;
+    	m_sumLatitude = 0;
+    	m_sumAltitude = 0;
+    	m_locationFixCount = 0;
+	}
+	public void disableCalibartion()
+	{
+		m_calibration = false;
+	}
+	public Location getCalibratedLocation( String provider )
+	{
+		Location location = new Location(provider);
+		double longitude = m_sumLongitude/m_locationFixCount;
+		double latitude = m_sumLatitude/m_locationFixCount;
+		double altitude = m_sumAltitude/m_locationFixCount;
+		location.setLongitude(longitude);
+		location.setLatitude(latitude);
+		location.setAltitude(altitude);
+
+		return location;
+	}
+	public long getLocationFixCount()
+	{
+		return m_locationFixCount;
+	}
+	
 	public abstract void onLocationEnabled();
 	public abstract void onLocationDisabled();
 	public abstract void onLocationServiceOn();
@@ -59,6 +107,14 @@ public abstract class GpsActivity extends Activity {
         {
         	onPermissionError();
         	return;
+        }
+
+        if( savedInstanceState != null ) {
+            m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
+            m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
+            m_sumLongitude = savedInstanceState.getDouble(SUM_LONGITUDE_KEY, 0);
+            m_sumLatitude = savedInstanceState.getDouble(SUM_LATITUDE_KEY, 0);
+            m_sumAltitude = savedInstanceState.getDouble(SUM_ALTITUDE_KEY, 0);
         }
 
         // Acquire a reference to the system Location Manager
@@ -103,20 +159,26 @@ public abstract class GpsActivity extends Activity {
 			}
         };
 
-        m_gpsStatusListener = new GpsStatus.Listener()
-        {
+//        m_gpsStatusListener = new GpsStatus.Listener()
+//        {
 
-			@Override
-			public void onGpsStatusChanged(int event)
-			{
-				onGpsStatusChanged2(event);
-			}
+//			@Override
+//			public void onGpsStatusChanged(int event)
+//			{
+//				onGpsStatusChanged2(event);
+//			}
+//		};
+
+        m_gnssStatusListener = new GnssStatus.Callback() {
+            @Override
+            public void onSatelliteStatusChanged(GnssStatus status) {
+                super.onSatelliteStatusChanged(status);
+            }
         };
-
         System.out.println("addGpsStatusListener");
-        m_locationManager.addGpsStatusListener(m_gpsStatusListener);
+        //m_locationManager.addGpsStatusListener(m_gpsStatusListener);
+		m_locationManager.registerGnssStatusCallback(m_gnssStatusListener, null);
 
-        
         // Register the listener with the Location Manager to receive location updates
 	    m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, m_locationListener);
 	    m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, m_locationListener);
@@ -124,6 +186,18 @@ public abstract class GpsActivity extends Activity {
 	    createGpsTimer(NORMAL_GPS);
     }
 	
+	@Override
+	protected void  onSaveInstanceState (Bundle outState)
+	{
+		super.onSaveInstanceState(outState);
+
+		outState.putLong(FIX_COUNT_KEY, m_locationFixCount);
+		outState.putBoolean(CALIBRATION_KEY, m_calibration);
+		outState.putDouble(SUM_LONGITUDE_KEY, m_sumLongitude);
+		outState.putDouble(SUM_LATITUDE_KEY, m_sumLatitude);
+		outState.putDouble(SUM_ALTITUDE_KEY, m_sumAltitude);
+	}
+
 	public void createGpsTimer( int interval )
 	{
 		if (m_gpsTimer!=null)
@@ -173,6 +247,7 @@ public abstract class GpsActivity extends Activity {
 		return m_gpsInterval;
 	}
 
+	private Boolean				m_logTrack = false;
     private File				m_file = null;
 	private FileOutputStream	m_fileos = null;
 	private PrintWriter			m_pos = null; 
@@ -217,6 +292,8 @@ public abstract class GpsActivity extends Activity {
 	}
 	private void appendTrackPoint(Location loc)
 	{
+		if( !m_logTrack || !Environment.isExternalStorageManager() )
+			return;
         try
 		{
         	if( m_pos == null )
@@ -239,7 +316,10 @@ public abstract class GpsActivity extends Activity {
 	}
 	public void readTrackPoints()
 	{
-		try 
+        if( !Environment.isExternalStorageManager() )
+            return;
+
+        try
 		{
 			if( m_file == null )
 			{
@@ -274,6 +354,7 @@ public abstract class GpsActivity extends Activity {
 				}
 
 				reader.close();
+				m_logTrack = true;
 			}
 		} 
 		catch (IOException e) 
@@ -301,14 +382,21 @@ public abstract class GpsActivity extends Activity {
 	private long m_startTime = 0;
 	private static final String m_provider = "gps";
 	
-	void lockLocationChanged( Location newLocation, boolean appendTrack )
+	void lockLocationChanged( Location newLocation, boolean fromGPS )
     {
 		if( m_provider==null || newLocation.getProvider().equalsIgnoreCase("GPS") )
 		{
 			m_lock.lock();
 			try {
-				if( appendTrack )
+		    	if( fromGPS )
 				{
+			    	++m_locationFixCount;
+			    	if( m_calibration )
+			    	{
+			    		m_sumLongitude += newLocation.getLongitude();
+			    		m_sumLatitude += newLocation.getLatitude();
+			    		m_sumAltitude += newLocation.getAltitude();
+			    	}
 					appendTrackPoint(newLocation);
 				}
 				
@@ -385,8 +473,8 @@ public abstract class GpsActivity extends Activity {
         // LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 		m_locationManager.removeUpdates( m_locationListener );
-		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
-
+//		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
+		m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
 		try 
 		{
 			closeGPSfileOS();
