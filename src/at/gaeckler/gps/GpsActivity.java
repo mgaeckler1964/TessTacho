@@ -1,3 +1,33 @@
+/*
+		Project:		GPS
+		Module:			GpsActivity.java
+		Description:	The android activity base for all GPS apps
+		Author:			Martin Gäckler
+		Address:		Hofmannsthalweg 14, A-4030 Linz
+		Web:			https://www.gaeckler.at/
+
+		Copyright:		(c) 2013-2026 Martin Gäckler
+
+		This program is free software: you can redistribute it and/or modify
+		it under the terms of the GNU General Public License as published by
+		the Free Software Foundation, version 3.
+
+		You should have received a copy of the GNU General Public License
+		along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+		THIS SOFTWARE IS PROVIDED BY Martin Gäckler, Linz, Austria ``AS IS''
+		AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+		TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+		PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR
+		CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+		SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+		LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+		USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+		ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+		OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+		OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+		SUCH DAMAGE.
+*/
 package at.gaeckler.gps;
 
 import java.io.BufferedReader;
@@ -21,8 +51,9 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
-public abstract class GpsActivity extends Activity {
 
+public abstract class GpsActivity extends Activity
+{
 	protected static final String	NAME_KEY = "name";
 
 	public static final int AUTO_GPS = 0;
@@ -61,11 +92,14 @@ public abstract class GpsActivity extends Activity {
 	}
 	public void enableCalibartion()
 	{
-    	m_calibration = true;
-    	m_sumLongitude = 0;
-    	m_sumLatitude = 0;
-    	m_sumAltitude = 0;
-    	m_locationFixCount = 0;
+		if( !m_calibration )
+		{
+			m_calibration = true;
+			m_sumLongitude = 0;
+			m_sumLatitude = 0;
+			m_sumAltitude = 0;
+			m_locationFixCount = 0;
+		}
 	}
 	public void disableCalibartion()
 	{
