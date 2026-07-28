@@ -11,7 +11,8 @@
     <string name="accelTest">Beschleunigung</string>
     <string name="about">Info</string>
     <string name="exit">Beenden</string>
- 	
+    <string name="darkMode">Darkmode</string>
+
     <string name="statusLabel">Status</string>
     <string name="brakeStatus">Bremsen</string>
     <string name="accelStatus">Beschleunigung</string>

@@ -76,6 +76,11 @@ public class TachoWidget extends View
 	public static final DecimalFormat s_dayDistanceFormat = new DecimalFormat( "0.0" );
 	public static final DecimalFormat s_accelFormat = new DecimalFormat( "0.0 m/s²" );
 
+	private static final int blackColor = 0xFF000000;
+	private static final int whiteColor = 0xFFFFFFFF;
+	private static int s_backGroundCol = whiteColor;
+	private static int s_foreGroundCol = blackColor;
+
 	public void setMaxTachoSpeed( double newSpeed )
 	{
 		if( newSpeed <= 20 )
@@ -109,8 +114,10 @@ public class TachoWidget extends View
 	}
 	private void initTacho()
 	{
+		setBackgroundColor(s_backGroundCol);
+
 		m_tachoPaint = new Paint();
-		m_tachoPaint.setARGB(255, 255, 255, 255);
+		m_tachoPaint.setColor( s_foreGroundCol );
 		m_tachoPaint.setStyle(Paint.Style.STROKE);
 		m_tachoPaint.setTextAlign(Paint.Align.CENTER);
 		m_tachoPaint.setAntiAlias( true );
@@ -250,6 +257,21 @@ public class TachoWidget extends View
 		m_totalDistance = total;
 		m_dayDistance = dayDistance;
 		m_hasBrakeInfo = hasBrakeInfo;
+		invalidate();
+	}
+
+	public void useBlackBackground()
+	{
+		s_backGroundCol = blackColor;
+		s_foreGroundCol = whiteColor;
+		initTacho();
+		invalidate();
+	}
+	public void useWhiteBackground()
+	{
+		s_backGroundCol = whiteColor;
+		s_foreGroundCol = blackColor;
+		initTacho();
 		invalidate();
 	}
 }

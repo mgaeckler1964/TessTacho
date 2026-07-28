@@ -38,7 +38,9 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 
-public class StatScreen extends Activity
+import androidx.appcompat.app.AppCompatActivity;
+
+public class StatScreen extends AppCompatActivity
 {
 	@Override
     public void onCreate(Bundle savedInstanceState)

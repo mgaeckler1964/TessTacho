@@ -62,6 +62,7 @@ public class TessTachoActivity extends GpsActivity
 	private TextView				m_statusLabel = null;
 	private TextView				m_brakeStatusLabel = null;
 	private TextView				m_accelStatusLabel = null;
+	private boolean					m_darkMode = false;
 	private TachoWidget				m_theTacho = null;
 	private String					m_myStatus = "Willkommen";
 	private long					m_locationFixCount = 0;
@@ -111,6 +112,7 @@ public class TessTachoActivity extends GpsActivity
 	private static final String			DAY_DISTANCE_KEY = "dayDistance";
 	private static final String			TOTAL_DISTANCE_KEY = "totalDistance";
 	private static final String			LOCATION_FIX_COUNT_KEY = "locationFixCount";
+	private static final String			DARK_MODE_KEY = "darkMode";
 
 	private void showMessage( String title, String message, final boolean terminate )
 	{
@@ -132,6 +134,19 @@ public class TessTachoActivity extends GpsActivity
 		alert.show();
 	}
 
+	private void switchColorMode()
+	{
+		if( m_darkMode )
+		{
+			AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+			m_theTacho.useBlackBackground();
+		}
+		else
+		{
+			AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+			m_theTacho.useWhiteBackground();
+		}
+	}
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState)
@@ -145,8 +160,6 @@ public class TessTachoActivity extends GpsActivity
 		}
 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-		AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
 		setContentView(R.layout.main);
 
@@ -184,6 +197,7 @@ public class TessTachoActivity extends GpsActivity
 
 			m_brakeStatusLabel.setText(savedInstanceState.getString(BRAKE_STATUS_KEY));
 			m_accelStatusLabel.setText(savedInstanceState.getString(ACCEL_STATUS_KEY));
+			m_darkMode = savedInstanceState.getBoolean(DARK_MODE_KEY,true);
 		}
 		else
 		{
@@ -195,6 +209,7 @@ public class TessTachoActivity extends GpsActivity
 
 		createGpsTimer(FAST_GPS);
 		showSpeed( 0, 0 );
+		switchColorMode();
 	}
 
 	@Override
@@ -204,6 +219,12 @@ public class TessTachoActivity extends GpsActivity
 		inflater.inflate(R.menu.tt_menu, menu);
 
 		return super.onCreateOptionsMenu(menu);
+	}
+	public boolean onPrepareOptionsMenu(Menu menu)
+	{
+		menu.findItem(R.id.darkMode).setChecked(m_darkMode);
+
+		return super.onPrepareOptionsMenu(menu);
 	}
 	private void configAccelTest()
 	{
@@ -299,6 +320,11 @@ public class TessTachoActivity extends GpsActivity
 		{
 			showAbout();
 		}
+		else if( itemId == R.id.darkMode )
+		{
+			m_darkMode = !m_darkMode;
+			switchColorMode();
+		}
 
 		return super.onOptionsItemSelected(item);
 	}
@@ -318,6 +344,7 @@ public class TessTachoActivity extends GpsActivity
 		editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
 		editor.putFloat( START_SPEED_KEY, (float)m_startSpeed );
 		editor.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed );
+		editor.putBoolean(DARK_MODE_KEY, m_darkMode);
 		editor.apply();
 	}
 
@@ -327,6 +354,7 @@ public class TessTachoActivity extends GpsActivity
 		m_totalDistance = settings.getFloat(TOTAL_DISTANCE_KEY, 0);
 		m_startSpeed = settings.getFloat(START_SPEED_KEY,0);
 		m_targetSpeed = settings.getFloat(TARGET_SPEED_KEY,0);
+		m_darkMode = settings.getBoolean(DARK_MODE_KEY,true);
 	}
 
 	@Override
@@ -370,6 +398,7 @@ public class TessTachoActivity extends GpsActivity
 
 		outState.putString(BRAKE_STATUS_KEY, m_brakeStatusLabel.getText().toString());
 		outState.putString(ACCEL_STATUS_KEY, m_accelStatusLabel.getText().toString());
+		outState.putBoolean(DARK_MODE_KEY, m_darkMode);
 	}
 	
 	@Override
