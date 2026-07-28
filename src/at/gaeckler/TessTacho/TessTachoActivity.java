@@ -1,10 +1,41 @@
+/*
+		Project:		TessTacho
+		Module:			TessTachoActivity.java
+		Description:	The android activity for the tacho meter
+		Author:			Martin Gäckler
+		Address:		Hofmannsthalweg 14, A-4030 Linz
+		Web:			https://www.gaeckler.at/
+
+		Copyright:		(c) 2013-2026 Martin Gäckler
+
+		This program is free software: you can redistribute it and/or modify
+		it under the terms of the GNU General Public License as published by
+		the Free Software Foundation, version 3.
+
+		You should have received a copy of the GNU General Public License
+		along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+		THIS SOFTWARE IS PROVIDED BY Martin Gäckler, Linz, Austria ``AS IS''
+		AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+		TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+		PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR
+		CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+		SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+		LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+		USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+		ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+		OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+		OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+		SUCH DAMAGE.
+*/
 package at.gaeckler.TessTacho;
 
 import java.text.DecimalFormat;
 
-import at.gaeckler.TessTacho.R;
 import at.gaeckler.gps.GpsActivity;
 import at.gaeckler.gps.GpsProcessor;
+
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -15,9 +46,7 @@ import android.location.GpsSatellite;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -57,7 +86,6 @@ public class TessTachoActivity extends GpsActivity
 	private double					m_totalDistance = 0.0;
 	private double					m_dayDistance = 0.0;
 	private double					m_accuracy = 0.0;
-	private PowerManager.WakeLock	m_wakeLock;
 
 	private static final DecimalFormat	s_accuracyFormat = new DecimalFormat( "Genauigkeit: 0.000m" );
 	private static final String			CONFIGURATION = "TessTacho.cfg";
@@ -83,154 +111,147 @@ public class TessTachoActivity extends GpsActivity
 	private static final String			TOTAL_DISTANCE_KEY = "totalDistance";
 	private static final String			LOCATION_FIX_COUNT_KEY = "locationFixCount";
 
-    private void showMessage( String title, String message, final boolean terminate )
-    {
-    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    	builder.setMessage(message)
-    		   .setTitle(title)
-    	       .setCancelable(false)
-    	       .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
-    	           public void onClick(DialogInterface dialog, int id) {
-    	                dialog.cancel();
-    	                if( terminate )
-    	                {
-    	                	finish();
-    	                }
-    	           }
-    	       })
-    	       .setIcon(R.drawable.icon);
-    	AlertDialog alert = builder.create();
-    	alert.show();
-    }
+	private void showMessage( String title, String message, final boolean terminate )
+	{
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage(message)
+			   .setTitle(title)
+			   .setCancelable(false)
+			   .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
+				   public void onClick(DialogInterface dialog, int id) {
+						dialog.cancel();
+						if( terminate )
+						{
+							finish();
+						}
+				   }
+			   })
+			   .setIcon(R.drawable.icon);
+		AlertDialog alert = builder.create();
+		alert.show();
+	}
 
 	/** Called when the activity is first created. */
 	@Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-        System.out.println("onCreate starts");
-        if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
-        {
-        	showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
-        	return;
-        }
-        
-        PowerManager	pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        m_wakeLock = pm.newWakeLock( PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, "TessTacho" );
-        m_wakeLock.acquire();
-        getWindow().addFlags(
-        	WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED|
-        	WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON|
-        	WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-        );
-        
-        setContentView(R.layout.main);
+	public void onCreate(Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState);
+		System.out.println("onCreate starts");
+		if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
+		{
+			showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
+			return;
+		}
 
-        m_statusLabel = (TextView)findViewById( R.id.statusLabel );
-    	setStatus( m_myStatus );
-        m_theTacho = (TachoWidget)findViewById( R.id.myTacho );
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        m_brakeStatusLabel = (TextView)findViewById( R.id.brakeStatus );
-        m_accelStatusLabel = (TextView)findViewById( R.id.accelStatus );
+		setContentView(R.layout.main);
 
-        if( savedInstanceState != null )
-        {
-        	m_totalDistance = savedInstanceState.getDouble(TOTAL_DISTANCE_KEY); 
-        	m_startSpeed = savedInstanceState.getDouble(START_SPEED_KEY); 
-        	m_targetSpeed = savedInstanceState.getDouble(TARGET_SPEED_KEY); 
-        	
-        	m_dayDistance = savedInstanceState.getDouble(DAY_DISTANCE_KEY);
-           	m_theTacho.setMaxTachoSpeed(savedInstanceState.getDouble(MAX_TACHO_SPEED_KEY));
-           	
-           	m_theTacho.setMaxSpeed(savedInstanceState.getDouble(MAX_SPEED_KEY));
-           	m_maxBrake = savedInstanceState.getDouble(MAX_BRAKE_KEY);
-           	m_maxAccel = savedInstanceState.getDouble(MAX_ACCEL_KEY);
-           	
-           	String provider = savedInstanceState.getString(BRAKE_PROV_KEY);
-           	if( provider != null )
-           	{
-           		m_brakeLocation = new Location(provider);
-           		m_brakeLocation.setLongitude(savedInstanceState.getDouble(BRAKE_LON_KEY));
-           		m_brakeLocation.setLatitude(savedInstanceState.getDouble(BRAKE_LAT_KEY));
-           		m_brakeLocation.setSpeed((float) savedInstanceState.getDouble(BRAKE_SPEED_KEY));
-           	}
-           	m_brakeDistance = savedInstanceState.getDouble(BRAKE_DISTANCE_KEY); 
+		m_statusLabel = findViewById( R.id.statusLabel );
+		setStatus( m_myStatus );
+		m_theTacho = findViewById( R.id.myTacho );
 
-           	m_locationFixCount = savedInstanceState.getLong(LOCATION_FIX_COUNT_KEY);
-           	
-           	m_brakeStatusLabel.setText(savedInstanceState.getString(BRAKE_STATUS_KEY));
-           	m_accelStatusLabel.setText(savedInstanceState.getString(ACCEL_STATUS_KEY));
-        }
-        else
-        {
-        	loadPreferences();
-        }
+		m_brakeStatusLabel = findViewById( R.id.brakeStatus );
+		m_accelStatusLabel = findViewById( R.id.accelStatus );
 
-        // Acquire a reference to the system Location Manager
-        m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+		if( savedInstanceState != null )
+		{
+			m_totalDistance = savedInstanceState.getDouble(TOTAL_DISTANCE_KEY);
+			m_startSpeed = savedInstanceState.getDouble(START_SPEED_KEY);
+			m_targetSpeed = savedInstanceState.getDouble(TARGET_SPEED_KEY);
 
-        createGpsTimer(FAST_GPS);
-        showSpeed( 0, 0 );
+			m_dayDistance = savedInstanceState.getDouble(DAY_DISTANCE_KEY);
+			m_theTacho.setMaxTachoSpeed(savedInstanceState.getDouble(MAX_TACHO_SPEED_KEY));
+
+			m_theTacho.setMaxSpeed(savedInstanceState.getDouble(MAX_SPEED_KEY));
+			m_maxBrake = savedInstanceState.getDouble(MAX_BRAKE_KEY);
+			m_maxAccel = savedInstanceState.getDouble(MAX_ACCEL_KEY);
+
+			String provider = savedInstanceState.getString(BRAKE_PROV_KEY);
+			if( provider != null )
+			{
+				m_brakeLocation = new Location(provider);
+				m_brakeLocation.setLongitude(savedInstanceState.getDouble(BRAKE_LON_KEY));
+				m_brakeLocation.setLatitude(savedInstanceState.getDouble(BRAKE_LAT_KEY));
+				m_brakeLocation.setSpeed((float) savedInstanceState.getDouble(BRAKE_SPEED_KEY));
+			}
+			m_brakeDistance = savedInstanceState.getDouble(BRAKE_DISTANCE_KEY);
+
+			m_locationFixCount = savedInstanceState.getLong(LOCATION_FIX_COUNT_KEY);
+
+			m_brakeStatusLabel.setText(savedInstanceState.getString(BRAKE_STATUS_KEY));
+			m_accelStatusLabel.setText(savedInstanceState.getString(ACCEL_STATUS_KEY));
+		}
+		else
+		{
+			loadPreferences();
+		}
+
+		// Acquire a reference to the system Location Manager
+		m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+		createGpsTimer(FAST_GPS);
+		showSpeed( 0, 0 );
 	}
 
-    @Override
-    public boolean onCreateOptionsMenu( android.view.Menu menu )
-    {
-    	MenuInflater inflater = getMenuInflater();
-    	inflater.inflate(R.menu.tt_menu, menu);
+	@Override
+	public boolean onCreateOptionsMenu( android.view.Menu menu )
+	{
+		MenuInflater inflater = getMenuInflater();
+		inflater.inflate(R.menu.tt_menu, menu);
 
-    	return super.onCreateOptionsMenu(menu);
-    }
-    private void configAccelTest()
-    {
-    	LayoutInflater layoutInflater = getLayoutInflater();
-    	final View view = layoutInflater.inflate(R.layout.accel_test, null);
-    	final AlertDialog alertDialog = new AlertDialog.Builder(this).create();
-    	alertDialog.setTitle("Beschleunigungstest");
-    	alertDialog.setIcon(R.drawable.icon);
-    	alertDialog.setCancelable(false);
-    	alertDialog.setMessage("Geben Sie hier die Start- und Zielgeschwindigkeit ein:");
-
-
-    	final EditText startSpeed = (EditText) view.findViewById(R.id.startSpeed);
-    	final EditText targetSpeed = (EditText) view.findViewById(R.id.targetSpeed);
-    	if (m_startSpeed > 0)
-    	{
-    		startSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_startSpeed)));
-    	}
-    	if (m_targetSpeed > 0)
-    	{
-    		targetSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_targetSpeed)));
-    	}
-    	alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
-    	    @Override
-    	    public void onClick(DialogInterface dialog, int which) {
-
-    			try
-    			{
-    				m_startSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
-    				m_targetSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(targetSpeed.getText().toString())+0.5));
-        	        alertDialog.dismiss();
-    			}
-    			catch (NumberFormatException e)
-    			{
-    				// ignore, don't change speed
-    			}
-    	    }
-    	});
+		return super.onCreateOptionsMenu(menu);
+	}
+	private void configAccelTest()
+	{
+		LayoutInflater layoutInflater = getLayoutInflater();
+		final View view = layoutInflater.inflate(R.layout.accel_test, null);
+		final AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+		alertDialog.setTitle("Beschleunigungstest");
+		alertDialog.setIcon(R.drawable.icon);
+		alertDialog.setCancelable(false);
+		alertDialog.setMessage("Geben Sie hier die Start- und Zielgeschwindigkeit ein:");
 
 
-    	alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Abbruch", new DialogInterface.OnClickListener() {
-    	    @Override
-    	    public void onClick(DialogInterface dialog, int which) {
-    	        alertDialog.dismiss();
-    	    }
-    	});
+		final EditText startSpeed = view.findViewById(R.id.startSpeed);
+		final EditText targetSpeed = view.findViewById(R.id.targetSpeed);
+		if (m_startSpeed > 0)
+		{
+			startSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_startSpeed)));
+		}
+		if (m_targetSpeed > 0)
+		{
+			targetSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_targetSpeed)));
+		}
+		alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
 
-    	       
-    	alertDialog.setView(view);
-    	alertDialog.show();    	
-    }
+				try
+				{
+					m_startSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
+					m_targetSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(targetSpeed.getText().toString())+0.5));
+					alertDialog.dismiss();
+				}
+				catch (NumberFormatException e)
+				{
+					// ignore, don't change speed
+				}
+			}
+		});
+
+
+		alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Abbruch", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				alertDialog.dismiss();
+			}
+		});
+
+
+		alertDialog.setView(view);
+		alertDialog.show();
+	}
 
 	private void showAbout()
 	{
@@ -244,81 +265,80 @@ public class TessTachoActivity extends GpsActivity
 				false
 		);
 	}
-    @Override
-    public boolean onOptionsItemSelected( MenuItem item )
-    {
-    	System.out.println("onOptionsItemSelected " +item.toString());
-    	int	itemId = item.getItemId();
-    	if( itemId == R.id.exit )
+	@Override
+	public boolean onOptionsItemSelected( MenuItem item )
+	{
+		System.out.println("onOptionsItemSelected " +item.toString());
+		int	itemId = item.getItemId();
+		if( itemId == R.id.exit )
 		{
-            finish();
-        }
-        else if( itemId == R.id.accelTest )
+			finish();
+		}
+		else if( itemId == R.id.accelTest )
 		{
-            configAccelTest();
-        }
-        else if( itemId == R.id.statistics )
-    	{
-        	Intent intent = new Intent( this, StatScreen.class );
-        	intent.putExtra(MAX_SPEED_KEY, m_theTacho.getMaxSpeed());
-        	intent.putExtra(MAX_ACCEL_KEY, m_maxAccel);
-        	intent.putExtra(MAX_BRAKE_KEY, m_maxBrake);
-        	if( m_brakeLocation != null )
-        	{
-            	intent.putExtra(BRAKE_SPEED_KEY, m_brakeLocation.getSpeed());
-            	intent.putExtra(BRAKE_DISTANCE_KEY, m_brakeDistance);
-        	}
-        	intent.putExtra(RESOLUTION_KEY, getResolution());
-        	startActivity( intent );
-    	}
-        else if( itemId == R.id.about )
-    	{
+			configAccelTest();
+		}
+		else if( itemId == R.id.statistics )
+		{
+			Intent intent = new Intent( this, StatScreen.class );
+			intent.putExtra(MAX_SPEED_KEY, m_theTacho.getMaxSpeed());
+			intent.putExtra(MAX_ACCEL_KEY, m_maxAccel);
+			intent.putExtra(MAX_BRAKE_KEY, m_maxBrake);
+			if( m_brakeLocation != null )
+			{
+				intent.putExtra(BRAKE_SPEED_KEY, m_brakeLocation.getSpeed());
+				intent.putExtra(BRAKE_DISTANCE_KEY, m_brakeDistance);
+			}
+			intent.putExtra(RESOLUTION_KEY, getResolution());
+			startActivity( intent );
+		}
+		else if( itemId == R.id.about )
+		{
 			showAbout();
-    	}
+		}
 
-    	return super.onOptionsItemSelected(item);
-    }
-    
-    @Override
+		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
 	public void onOptionsMenuClosed(Menu menu)
 	{
 		super.onOptionsMenuClosed(menu);
 		// Workaround for https://issuetracker.google.com/issues/315761686
 		invalidateOptionsMenu();
 	}
-    
-    private void savePreferences()
-    {
-    	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
-        editor.putFloat( START_SPEED_KEY, (float)m_startSpeed );
-        editor.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed );
-        editor.commit();
-    }
 
-    private void loadPreferences()
-    {
-    	SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
-    	m_totalDistance = settings.getFloat(TOTAL_DISTANCE_KEY, 0);
-    	m_startSpeed = settings.getFloat(START_SPEED_KEY,0); 
-    	m_targetSpeed = settings.getFloat(TARGET_SPEED_KEY,0); 
-    }
+	private void savePreferences()
+	{
+		SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
+		editor.putFloat( START_SPEED_KEY, (float)m_startSpeed );
+		editor.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed );
+		editor.apply();
+	}
 
-    @Override
-    public void onPause()
-    {
-        m_wakeLock.release();
-        savePreferences();
-        super.onPause();
-    }
-    
+	private void loadPreferences()
+	{
+		SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
+		m_totalDistance = settings.getFloat(TOTAL_DISTANCE_KEY, 0);
+		m_startSpeed = settings.getFloat(START_SPEED_KEY,0);
+		m_targetSpeed = settings.getFloat(TARGET_SPEED_KEY,0);
+	}
+
+	@Override
+	public void onPause()
+	{
+		savePreferences();
+		super.onPause();
+	}
+
 	@Override
 	public void onDestroy()
 	{
 		savePreferences();
-        super.onDestroy();
-    }
+		super.onDestroy();
+	}
 	@Override
 	protected void  onSaveInstanceState (Bundle outState)
 	{
@@ -351,13 +371,13 @@ public class TessTachoActivity extends GpsActivity
 	
 	@Override
 	public void onLocationChanged( Location newLocation )
-    {
-    	double	distance;
-    	
-    	++m_locationFixCount;
-    	m_accuracy = newLocation.getAccuracy();
-    	setStatus( m_myStatus );
-    	
+	{
+		double	distance;
+
+		++m_locationFixCount;
+		m_accuracy = newLocation.getAccuracy();
+		setStatus( m_myStatus );
+
 		if( m_distanceLocation != null )
 		{
 			distance = m_distanceLocation.distanceTo(newLocation);
@@ -372,10 +392,10 @@ public class TessTachoActivity extends GpsActivity
 		double speed = getSpeed();
 		double accel = getAccel();
 		showSpeed( GpsProcessor.speedToKmh(speed), accel );
-    	
-    	m_distanceLocation = newLocation;
 
-    	if( accel<0 )
+		m_distanceLocation = newLocation;
+
+		if( accel<0 )
 		{
 			if(m_brakeLocation==null)
 			{
@@ -401,75 +421,75 @@ public class TessTachoActivity extends GpsActivity
 		{
 			m_brakeLocation = null;
 		}
-    	if(m_brakeLocation!=null)
-    	{
-    		double brakeSpeed = m_brakeLocation.getSpeed();
-	        String brakeSpeedStr = TachoWidget.s_speedFormat.format(GpsProcessor.speedToKmh(brakeSpeed));
-	        String brakeDistanceStr = TachoWidget.s_dayDistanceFormat.format(m_brakeDistance);
-	        String brakeTimeStr = Long.toString(m_brakeTime);
-	        String brakeCountStr = Long.toString(m_brakeLocationCount);
-	        
-	        m_brakeStatusLabel.setText(brakeSpeedStr + '/' + brakeDistanceStr + "m/" + brakeTimeStr + "ms/" + brakeCountStr);
-    	}
-    	
-    	if( speed>m_startSpeed )
-    	{
-    		if(m_accelLocation==null)
-    		{
-    			m_accelLocation = newLocation;
-    			m_accelDistance = 0;
-    			m_accelTime = 0;
-    			m_accelLocationCount = 0;
-    			m_inaccel = true;
-    		}
-    		else if( m_inaccel )
-    		{
+		if(m_brakeLocation!=null)
+		{
+			double brakeSpeed = m_brakeLocation.getSpeed();
+			String brakeSpeedStr = TachoWidget.s_speedFormat.format(GpsProcessor.speedToKmh(brakeSpeed));
+			String brakeDistanceStr = TachoWidget.s_dayDistanceFormat.format(m_brakeDistance);
+			String brakeTimeStr = Long.toString(m_brakeTime);
+			String brakeCountStr = Long.toString(m_brakeLocationCount);
+
+			m_brakeStatusLabel.setText(brakeSpeedStr + '/' + brakeDistanceStr + "m/" + brakeTimeStr + "ms/" + brakeCountStr);
+		}
+
+		if( speed>m_startSpeed )
+		{
+			if(m_accelLocation==null)
+			{
+				m_accelLocation = newLocation;
+				m_accelDistance = 0;
+				m_accelTime = 0;
+				m_accelLocationCount = 0;
+				m_inaccel = true;
+			}
+			else if( m_inaccel )
+			{
 				m_accelDistance += distance;
 				m_accelTime = newLocation.getTime() - m_accelLocation.getTime();
 				++m_accelLocationCount;
-    		}
-    	}
-    	else if(speed == 0)
-    	{
-    		m_accelLocation=null;
-    	}
-    	if(m_accelLocation!=null && m_inaccel)
-    	{
-	        String accelDistanceStr = TachoWidget.s_dayDistanceFormat.format(m_accelDistance);
-	        String accelTimeStr = Long.toString(m_accelTime);
-	        String accelCountStr = Long.toString(m_accelLocationCount);
+			}
+		}
+		else if(speed == 0)
+		{
+			m_accelLocation=null;
+		}
+		if(m_accelLocation!=null && m_inaccel)
+		{
+			String accelDistanceStr = TachoWidget.s_dayDistanceFormat.format(m_accelDistance);
+			String accelTimeStr = Long.toString(m_accelTime);
+			String accelCountStr = Long.toString(m_accelLocationCount);
 
-	        m_accelStatusLabel.setText(accelTimeStr + "ms/" + accelDistanceStr + "m/" + accelCountStr);
-    		if (speed>=m_targetSpeed)
-    		{
-    			m_inaccel = false;
-    		}
-    	}
-    }
+			m_accelStatusLabel.setText(accelTimeStr + "ms/" + accelDistanceStr + "m/" + accelCountStr);
+			if (speed>=m_targetSpeed)
+			{
+				m_inaccel = false;
+			}
+		}
+	}
 
-    void showSpeed( double speed, double accel )
-    {
+	void showSpeed( double speed, double accel )
+	{
 		if( accel > m_maxAccel)
 			m_maxAccel = accel;
 		else if( accel < m_maxBrake)
 			m_maxBrake = accel;
 
 		double displayedDay = m_dayDistance > 1000 ? m_dayDistance/1000.0 : m_dayDistance; 
-    	m_theTacho.showSpeedAndDistance(speed, accel, (int)(m_totalDistance/1000), displayedDay, m_brakeLocation!=null);
-    }
-    void setStatus( String text )
-    {
-    	m_myStatus = text;
-    	m_statusLabel.setText( text + " " + s_accuracyFormat.format(m_accuracy) + " " + Long.toString(m_locationFixCount) );
-    }
+		m_theTacho.showSpeedAndDistance(speed, accel, (int)(m_totalDistance/1000), displayedDay, m_brakeLocation!=null);
+	}
+	void setStatus( String text )
+	{
+		m_myStatus = text;
+		m_statusLabel.setText( text + " " + s_accuracyFormat.format(m_accuracy) + " " + m_locationFixCount );
+	}
 
 	@Override
 	public void onLocationEnabled() {
-    	setStatus( "GPS ist eingeschaltet");
+		setStatus( "GPS ist eingeschaltet");
 	}
 	@Override
 	public void onLocationDisabled() {
-    	setStatus( "GPS ist abgeschaltet");
+		setStatus( "GPS ist abgeschaltet");
 		showSpeed( 0, 0 );
 	}
 	@Override
@@ -485,14 +505,15 @@ public class TessTachoActivity extends GpsActivity
 	public void onLocationTempOff() {
 		setStatus( "Kurzfristig kein GPS Empfang" );
 	}
+	@SuppressLint("MissingPermission")
 	@Override
 	public void onGpsStatusChanged2(int event) {
 		if( event == GpsStatus.GPS_EVENT_STARTED )
-        	setStatus( "GPS gestartet");
+			setStatus( "GPS gestartet");
 		else if( event == GpsStatus.GPS_EVENT_STOPPED )
-        	setStatus( "GPS gestoppt");
+			setStatus( "GPS gestoppt");
 		else if( event == GpsStatus.GPS_EVENT_FIRST_FIX )
-        	setStatus( "GPS erster Fix");
+			setStatus( "GPS erster Fix");
 		else if( event == GpsStatus.GPS_EVENT_SATELLITE_STATUS  )
 		{
 			int Satellites = 0;
@@ -504,12 +525,12 @@ public class TessTachoActivity extends GpsActivity
 
 				Satellites++;
 			}
-			setStatus( "GPS Satelliten: " + Integer.toString(SatellitesInFix) + "/" + Integer.toString(Satellites) );
+			setStatus( "GPS Satelliten: " + SatellitesInFix + "/" + Satellites );
 		}
 	}
 
 	@Override
 	public void onPermissionError() {
-    	showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
+		showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
 	}
 }
