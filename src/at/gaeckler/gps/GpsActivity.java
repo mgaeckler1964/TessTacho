@@ -38,11 +38,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.concurrent.locks.ReentrantLock;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.location.GpsSatellite;
-import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -63,11 +62,15 @@ public abstract class GpsActivity extends Activity
 
 	private static final double MAX_SPEED = 100;
 	private static final double MAX_ACCEL = 100;
-	
+
+	public static final int GPS_EVENT_STARTED = 1;
+	public static final int GPS_EVENT_SATELLITE_STATUS = 2;
+	public static final int GPS_EVENT_FIRST_FIX = 3;
+	public static final int GPS_EVENT_STOPPED = 4;
+
 	CountDownTimer		m_gpsTimer = null;
 	LocationManager		m_locationManager = null;
 	private LocationListener	m_locationListener = null;
-    //private GpsStatus.Listener	m_gpsStatusListener = null;
 
     private GnssStatus.Callback	m_gnssStatusListener = null;
 	private final GpsProcessor	m_processor = new GpsProcessor();
@@ -127,7 +130,7 @@ public abstract class GpsActivity extends Activity
 	public abstract void onLocationServiceOn();
 	public abstract void onLocationServiceOff();
 	public abstract void onLocationTempOff();
-	public abstract void onGpsStatusChanged2(int event);
+	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
 	public abstract void onPermissionError();
 	
@@ -193,24 +196,34 @@ public abstract class GpsActivity extends Activity
 			}
         };
 
-//        m_gpsStatusListener = new GpsStatus.Listener()
-//        {
+        m_gnssStatusListener = new GnssStatus.Callback()
+		{
+			@Override
+			public void onStarted()
+			{
+				super.onStarted();
+				onGnssStatusChanged2(GPS_EVENT_STARTED, null);
+			}
 
-//			@Override
-//			public void onGpsStatusChanged(int event)
-//			{
-//				onGpsStatusChanged2(event);
-//			}
-//		};
-
-        m_gnssStatusListener = new GnssStatus.Callback() {
-            @Override
-            public void onSatelliteStatusChanged(GnssStatus status) {
+			@Override
+			public void onFirstFix(int ttffMillis)
+			{
+				super.onFirstFix(ttffMillis);
+				onGnssStatusChanged2(GPS_EVENT_FIRST_FIX, null);
+			}
+			@Override
+			public void onStopped()
+			{
+				super.onStopped();
+				onGnssStatusChanged2(GPS_EVENT_STOPPED, null);
+			}
+            public void onSatelliteStatusChanged(GnssStatus status)
+			{
                 super.onSatelliteStatusChanged(status);
+				onGnssStatusChanged2(GPS_EVENT_SATELLITE_STATUS, status);
             }
         };
-        System.out.println("addGpsStatusListener");
-        //m_locationManager.addGpsStatusListener(m_gpsStatusListener);
+        System.out.println("addGnssStatusListener");
 		m_locationManager.registerGnssStatusCallback(m_gnssStatusListener, null);
 
         // Register the listener with the Location Manager to receive location updates
@@ -247,6 +260,7 @@ public abstract class GpsActivity extends Activity
 		    	private Location m_lastKnown=null;
 		
 		    	@Override
+				@SuppressLint("MissingPermission")
 		    	public void onTick(long millisUntilFinished) {
 		    		Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 		    		if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
@@ -495,11 +509,7 @@ public abstract class GpsActivity extends Activity
 	{
 		lockLocationChanged( newLocation, false );
 	}
-	public Iterable<GpsSatellite> getSatellites()
-	{
-		return m_locationManager.getGpsStatus(null).getSatellites();
-	}
-	
+
 	@Override
 	public void onDestroy()
 	{
@@ -580,14 +590,14 @@ public abstract class GpsActivity extends Activity
 	private static String locationString( Location src, boolean raw )
 	{
 		String result = src.getProvider() + '|' + 
-				Double.toString(src.getLongitude()) + '|' + 
-				Double.toString(src.getLatitude()) + '|' +
-				Double.toString(src.getAltitude());
+				src.getLongitude() + '|' +
+				src.getLatitude() + '|' +
+				src.getAltitude();
 		
 		if( raw )
 		{
-			result += '|' + Double.toString(src.getAccuracy()) +
-					  '|' + Long.toString(src.getTime());
+			result += '|' + src.getAccuracy() +
+					  '|' + src.getTime();
 		}
 		return result;
 	}
@@ -620,7 +630,7 @@ public abstract class GpsActivity extends Activity
 		newLocation.setLatitude(latitude);
 		if (elements.length >= 4)
 		{
-			newLocation.setAltitude(Double.parseDouble(elements[3]));;
+			newLocation.setAltitude(Double.parseDouble(elements[3]));
 		}
 
 		if( raw )

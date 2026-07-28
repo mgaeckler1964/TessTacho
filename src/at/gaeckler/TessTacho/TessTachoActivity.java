@@ -42,8 +42,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.GpsSatellite;
-import android.location.GpsStatus;
+import android.location.GnssStatus;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -505,26 +504,28 @@ public class TessTachoActivity extends GpsActivity
 	public void onLocationTempOff() {
 		setStatus( "Kurzfristig kein GPS Empfang" );
 	}
-	@SuppressLint("MissingPermission")
 	@Override
-	public void onGpsStatusChanged2(int event) {
-		if( event == GpsStatus.GPS_EVENT_STARTED )
+	public void onGnssStatusChanged2(int event, GnssStatus status)
+	{
+		if( event == GPS_EVENT_STARTED )
 			setStatus( "GPS gestartet");
-		else if( event == GpsStatus.GPS_EVENT_STOPPED )
+		else if( event == GPS_EVENT_STOPPED )
 			setStatus( "GPS gestoppt");
-		else if( event == GpsStatus.GPS_EVENT_FIRST_FIX )
+		else if( event == GPS_EVENT_FIRST_FIX )
 			setStatus( "GPS erster Fix");
-		else if( event == GpsStatus.GPS_EVENT_SATELLITE_STATUS  )
+		else if( event == GPS_EVENT_SATELLITE_STATUS  )
 		{
-			int Satellites = 0;
+			int Satellites = status.getSatelliteCount();
 			int SatellitesInFix = 0;
-			for (GpsSatellite sat : m_locationManager.getGpsStatus(null).getSatellites())
-			{
-				if(sat.usedInFix())
-					SatellitesInFix++;              
 
-				Satellites++;
+			for (int i = 0; i < Satellites; i++)
+			{
+				if(status.usedInFix(i))
+				{
+					SatellitesInFix++;
+				}
 			}
+
 			setStatus( "GPS Satelliten: " + SatellitesInFix + "/" + Satellites );
 		}
 	}
