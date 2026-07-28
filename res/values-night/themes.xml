@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Basis-Theme für den DUNKLEN Modus (gleicher Name!) -->
-    <style name="Theme.TessTacho" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.TessTacho" parent="Theme.AppCompat.DayNight.DarkActionBar">
         <!-- Deine Farben für Dunkel -->
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorPrimary">@color/black</item>
+        <item name="colorPrimaryDark">@color/purple_700</item>
+        <item name="colorAccent">@color/purple_200</item>
 
         <!-- Hintergründe und Textfarben für Dunkel -->
         <item name="android:windowBackground">#121212</item>

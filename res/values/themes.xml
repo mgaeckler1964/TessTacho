@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Basis-Theme für den HELLEN Modus -->
-    <style name="Theme.TessTacho" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.TessTacho" parent="Theme.AppCompat.DayNight">
         <!-- Deine Farben für Hell -->
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimary">@color/purple_200</item>
+        <item name="colorPrimaryDark">@color/purple_700</item>
+        <item name="colorAccent">@color/white</item>
 
         <!-- Hintergründe und Textfarben -->
         <item name="android:windowBackground">@color/white</item>

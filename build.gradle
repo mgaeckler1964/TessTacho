@@ -45,9 +45,26 @@ android {
 	tasks.withType(JavaCompile) {
 		options.compilerArgs << "-Xlint:deprecation"
 	}
+	buildTypes {
+		release {
+			minifyEnabled true      // Entfernt nicht genutzten Code/Klassen aus Bibliotheken
+			shrinkResources true    // Wirft ungenutzte XMLs, Layouts & Bilder aus den Libs heraus
+			proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+		}
+	}
+	defaultConfig {
+		// Behält NUR Deutsch (und ggf. Englisch) aus eingebundenen Bibliotheken
+		resConfigs "de", "en"
+	}
 }
 
 dependencies {
-	implementation 'androidx.appcompat:appcompat:1.7.1'
-	implementation 'com.google.android.material:material:1.14.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+}
+
+configurations.all {
+    resolutionStrategy {
+        exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"
+        exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"
+    }
 }
