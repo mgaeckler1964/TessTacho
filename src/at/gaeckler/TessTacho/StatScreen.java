@@ -100,11 +100,4 @@ public class StatScreen extends Activity
 			});
         }
 	}
-
-	@Override
-    public void onBackPressed()
-    {
-    	finish();
-    	super.onBackPressed();
-    }
 }

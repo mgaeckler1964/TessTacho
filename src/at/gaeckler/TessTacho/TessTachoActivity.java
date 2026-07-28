@@ -492,19 +492,6 @@ public class TessTachoActivity extends GpsActivity
 		showSpeed( 0, 0 );
 	}
 	@Override
-	public void onLocationServiceOn() {
-		setStatus( "GPS Empfang" );
-	}
-	@Override
-	public void onLocationServiceOff() {
-		setStatus( "Kein GPS Empfang" );
-		showSpeed( 0, 0 );
-	}
-	@Override
-	public void onLocationTempOff() {
-		setStatus( "Kurzfristig kein GPS Empfang" );
-	}
-	@Override
 	public void onGnssStatusChanged2(int event, GnssStatus status)
 	{
 		if( event == GPS_EVENT_STARTED )

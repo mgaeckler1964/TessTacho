@@ -45,7 +45,6 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.location.LocationProvider;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
@@ -127,9 +126,6 @@ public abstract class GpsActivity extends Activity
 	
 	public abstract void onLocationEnabled();
 	public abstract void onLocationDisabled();
-	public abstract void onLocationServiceOn();
-	public abstract void onLocationServiceOff();
-	public abstract void onLocationTempOff();
 	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
 	public abstract void onPermissionError();
@@ -160,23 +156,6 @@ public abstract class GpsActivity extends Activity
         // Define a listener that responds to location updates
         m_locationListener = new LocationListener()
         {
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) 
-            {
-            	if( status == LocationProvider.OUT_OF_SERVICE )
-            	{
-            		onLocationServiceOff();
-            	}
-            	else if( status == LocationProvider.TEMPORARILY_UNAVAILABLE )
-            	{
-            		onLocationTempOff();
-            	}
-            	else if( status == LocationProvider.AVAILABLE )
-            	{
-            		onLocationServiceOn();
-            	}
-            }
-
             @Override
             public void onProviderEnabled(String provider)
             {
