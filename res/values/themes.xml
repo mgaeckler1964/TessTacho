@@ -4,8 +4,8 @@
     <style name="Theme.TessTacho" parent="Theme.AppCompat.DayNight">
         <!-- Deine Farben für Hell -->
         <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryDark">@color/purple_700</item>
-        <item name="colorAccent">@color/white</item>
+        <item name="colorAccent">@color/purple_200</item>
+        <item name="android:windowLightStatusBar">true</item>
 
         <!-- Hintergründe und Textfarben -->
         <item name="android:windowBackground">@color/white</item>
