@@ -50,7 +50,9 @@ import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
 
-public abstract class GpsActivity extends Activity
+import androidx.appcompat.app.AppCompatActivity;
+
+public abstract class GpsActivity extends AppCompatActivity
 {
 	protected static final String	NAME_KEY = "name";
 
@@ -635,4 +637,11 @@ public abstract class GpsActivity extends Activity
 		return locationString( src, false );
 	}
 
+	// may be this is useful
+	//public boolean isDarkModeActive(Context context)
+	//{
+	//	int nightModeFlags = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+	//
+	//	return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
+	//}
 }

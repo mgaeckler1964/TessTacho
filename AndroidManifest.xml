@@ -5,7 +5,7 @@
 
     <application android:icon="@drawable/icon" android:label="@string/app_name" android:allowBackup="true"
         android:enabled="true" android:supportsRtl="false"
-        android:theme="@android:style/Theme.Material">
+        android:theme="@style/Theme.TessTacho">
 
         <activity android:name="at.gaeckler.TessTacho.TessTachoActivity"
                   android:exported="true">

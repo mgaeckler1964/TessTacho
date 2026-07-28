@@ -55,6 +55,8 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AppCompatDelegate;
+
 public class TessTachoActivity extends GpsActivity
 {
 	private TextView				m_statusLabel = null;
@@ -143,6 +145,8 @@ public class TessTachoActivity extends GpsActivity
 		}
 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+		AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
 		setContentView(R.layout.main);
 

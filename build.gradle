@@ -22,7 +22,7 @@ android {
 		minSdk 30
 		targetSdk 36
 		versionCode 6
-		versionName "3.7.27"
+		versionName "3.7.28"
 		resValue "string", "app_version", versionName
 	}
 
@@ -45,4 +45,9 @@ android {
 	tasks.withType(JavaCompile) {
 		options.compilerArgs << "-Xlint:deprecation"
 	}
+}
+
+dependencies {
+	implementation 'androidx.appcompat:appcompat:1.7.1'
+	implementation 'com.google.android.material:material:1.14.0'
 }
