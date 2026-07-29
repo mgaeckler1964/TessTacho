@@ -38,8 +38,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.concurrent.locks.ReentrantLock;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -51,11 +51,14 @@ import android.os.Environment;
 import android.location.GnssStatus;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 public abstract class GpsActivity extends AppCompatActivity
 {
 	protected static final String	NAME_KEY = "name";
 
+	protected static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 	public static final int AUTO_GPS = 0;
 	public static final int FAST_GPS = 100;
 	public static final int NORMAL_GPS = 1000;
@@ -121,6 +124,7 @@ public abstract class GpsActivity extends AppCompatActivity
 
 		return location;
 	}
+
 	public long getLocationFixCount()
 	{
 		return m_locationFixCount;
@@ -130,20 +134,24 @@ public abstract class GpsActivity extends AppCompatActivity
 	public abstract void onLocationDisabled();
 	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
-	public abstract void onPermissionError();
-	
+
     /** Called when the activity is first created. */
 	@Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
-        if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
-        {
-        	onPermissionError();
-        	return;
-        }
-
+		if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+				!= PackageManager.PERMISSION_GRANTED)
+		{
+			// Suggestion: Request the permission instead of just failing
+			ActivityCompat.requestPermissions(this,
+				new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+				LOCATION_PERMISSION_REQUEST_CODE
+			);
+			finish();
+			return;
+		}
         if( savedInstanceState != null ) {
             m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
             m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
@@ -321,8 +329,10 @@ public abstract class GpsActivity extends AppCompatActivity
 	}
 	private void appendTrackPoint(Location loc)
 	{
-		if( !m_logTrack || !Environment.isExternalStorageManager() )
+		if(!m_logTrack || !Environment.isExternalStorageManager())
+		{
 			return;
+		}
         try
 		{
         	if( m_pos == null )
@@ -345,8 +355,10 @@ public abstract class GpsActivity extends AppCompatActivity
 	}
 	public void readTrackPoints()
 	{
-        if( !Environment.isExternalStorageManager() )
-            return;
+		if(!Environment.isExternalStorageManager())
+		{
+			return;
+		}
 
         try
 		{

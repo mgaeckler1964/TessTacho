@@ -549,9 +549,4 @@ public class TessTachoActivity extends GpsActivity
 			setStatus( "GPS Satelliten: " + SatellitesInFix + "/" + Satellites );
 		}
 	}
-
-	@Override
-	public void onPermissionError() {
-		showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
-	}
 }
