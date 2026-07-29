@@ -40,6 +40,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -50,6 +51,7 @@ import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
 
+import androidx.annotation.DrawableRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -76,7 +78,7 @@ public abstract class GpsActivity extends AppCompatActivity
 	LocationManager		m_locationManager = null;
 	private LocationListener	m_locationListener = null;
 
-    private GnssStatus.Callback	m_gnssStatusListener = null;
+	private GnssStatus.Callback	m_gnssStatusListener = null;
 	private final GpsProcessor	m_processor = new GpsProcessor();
 	private int m_gpsInterval = 0;
 
@@ -91,6 +93,39 @@ public abstract class GpsActivity extends AppCompatActivity
 	private double	m_sumLatitude = 0;
 	private double	m_sumAltitude = 0;
 	private long	m_locationFixCount = 0;
+
+	public interface DialogCallback {
+		void onConfirmed(boolean confirmed);
+	}
+
+	public void showMessage(@DrawableRes int iconId, String title, String message, final boolean terminate, DialogCallback callback )
+	{
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage(message)
+				.setTitle(title)
+				.setCancelable(false)
+				.setPositiveButton("OK", (dialog, id) ->
+				{
+					dialog.dismiss();
+					if (terminate) {
+						finish();
+					}
+					if (callback != null)
+						callback.onConfirmed(true);
+				})
+				.setIcon(iconId)
+		;
+		if( callback != null )
+		{
+			builder.setNegativeButton("Abbruch", (dialog, id) ->
+			{
+				dialog.cancel();
+				if (callback != null) callback.onConfirmed(false);
+			});
+		}
+		AlertDialog alert = builder.create();
+		alert.show();
+	}
 
 
 	public boolean isCalibrationMode()
@@ -135,11 +170,11 @@ public abstract class GpsActivity extends AppCompatActivity
 	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
 
-    /** Called when the activity is first created. */
+	/** Called when the activity is first created. */
 	@Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
+	public void onCreate(Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState);
 
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
 				!= PackageManager.PERMISSION_GRANTED)
@@ -152,40 +187,40 @@ public abstract class GpsActivity extends AppCompatActivity
 			finish();
 			return;
 		}
-        if( savedInstanceState != null ) {
-            m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
-            m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
-            m_sumLongitude = savedInstanceState.getDouble(SUM_LONGITUDE_KEY, 0);
-            m_sumLatitude = savedInstanceState.getDouble(SUM_LATITUDE_KEY, 0);
-            m_sumAltitude = savedInstanceState.getDouble(SUM_ALTITUDE_KEY, 0);
-        }
+		if( savedInstanceState != null ) {
+			m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
+			m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
+			m_sumLongitude = savedInstanceState.getDouble(SUM_LONGITUDE_KEY, 0);
+			m_sumLatitude = savedInstanceState.getDouble(SUM_LATITUDE_KEY, 0);
+			m_sumAltitude = savedInstanceState.getDouble(SUM_ALTITUDE_KEY, 0);
+		}
 
-        // Acquire a reference to the system Location Manager
-        m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+		// Acquire a reference to the system Location Manager
+		m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        // Define a listener that responds to location updates
-        m_locationListener = new LocationListener()
-        {
-            @Override
-            public void onProviderEnabled(String provider)
-            {
-            	onLocationEnabled();
-            }
+		// Define a listener that responds to location updates
+		m_locationListener = new LocationListener()
+		{
+			@Override
+			public void onProviderEnabled(String provider)
+			{
+				onLocationEnabled();
+			}
 
-            @Override
-            public void onProviderDisabled(String provider)
-            {
-            	onLocationDisabled();
-            }
+			@Override
+			public void onProviderDisabled(String provider)
+			{
+				onLocationDisabled();
+			}
 
 			@Override
 			public void onLocationChanged(Location location)
 			{
 				lockLocationChanged( location, true );
 			}
-        };
+		};
 
-        m_gnssStatusListener = new GnssStatus.Callback()
+		m_gnssStatusListener = new GnssStatus.Callback()
 		{
 			@Override
 			public void onStarted()
@@ -206,21 +241,21 @@ public abstract class GpsActivity extends AppCompatActivity
 				super.onStopped();
 				onGnssStatusChanged2(GPS_EVENT_STOPPED, null);
 			}
-            public void onSatelliteStatusChanged(GnssStatus status)
+			public void onSatelliteStatusChanged(GnssStatus status)
 			{
-                super.onSatelliteStatusChanged(status);
+				super.onSatelliteStatusChanged(status);
 				onGnssStatusChanged2(GPS_EVENT_SATELLITE_STATUS, status);
-            }
-        };
-        System.out.println("addGnssStatusListener");
+			}
+		};
+		System.out.println("addGnssStatusListener");
 		m_locationManager.registerGnssStatusCallback(m_gnssStatusListener, null);
 
-        // Register the listener with the Location Manager to receive location updates
-	    m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, m_locationListener);
-	    m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, m_locationListener);
+		// Register the listener with the Location Manager to receive location updates
+		m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, m_locationListener);
+		m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, m_locationListener);
 
-	    createGpsTimer(NORMAL_GPS);
-    }
+		createGpsTimer(NORMAL_GPS);
+	}
 	
 	@Override
 	protected void  onSaveInstanceState (Bundle outState)
@@ -243,25 +278,25 @@ public abstract class GpsActivity extends AppCompatActivity
 		if( interval > 0 )
 		{
 			m_gpsInterval = interval;
-		    m_gpsTimer = new CountDownTimer(100000000, interval) {
-		    	
-		    	/// TODO remove 
-		    	private Location m_lastKnown=null;
+			m_gpsTimer = new CountDownTimer(100000000, interval) {
+
+				/// TODO remove
+				private Location m_lastKnown=null;
 		
-		    	@Override
+				@Override
 				@SuppressLint("MissingPermission")
-		    	public void onTick(long millisUntilFinished) {
-		    		Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-		    		if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
-		    		{
-		    			lockLocationChanged(newLocation, true);
-		    		}
-		    	}
+				public void onTick(long millisUntilFinished) {
+					Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+					if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
+					{
+						lockLocationChanged(newLocation, true);
+					}
+				}
 			
-		    	@Override
-		    	public void onFinish() {
-		    		m_gpsTimer.start();
-		    	}
+				@Override
+				public void onFinish() {
+					m_gpsTimer.start();
+				}
 			}.start();
 		}
 		else
@@ -285,26 +320,26 @@ public abstract class GpsActivity extends AppCompatActivity
 	}
 
 	private Boolean				m_logTrack = false;
-    private File				m_file = null;
+	private File				m_file = null;
 	private FileOutputStream	m_fileos = null;
 	private PrintWriter			m_pos = null; 
 
 	private static final String TRACK_FILE = "temp.gak.gps.txt";
 
 	private static File getExternalFileName( String filename )
-    {
-        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+	{
+		File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
 
-        System.out.println(dir.getPath());
-        if( !dir.exists() )
-        {
-        	dir.mkdir();
-        }
-        File file = new File(dir, filename);
-        System.out.println(file.getPath());
-        
-        return file;
-    }
+		System.out.println(dir.getPath());
+		if( !dir.exists() )
+		{
+			dir.mkdir();
+		}
+		File file = new File(dir, filename);
+		System.out.println(file.getPath());
+
+		return file;
+	}
 	private void openGPSfileOS() throws IOException
 	{
 		m_file = getExternalFileName(TRACK_FILE);
@@ -333,12 +368,12 @@ public abstract class GpsActivity extends AppCompatActivity
 		{
 			return;
 		}
-        try
+		try
 		{
-        	if( m_pos == null )
-        	{
-        		openGPSfileOS();
-        	}
+			if( m_pos == null )
+			{
+				openGPSfileOS();
+			}
 			m_pos.println(locationString(loc, true));
 			m_pos.flush();
 			m_fileos.flush();
@@ -347,7 +382,7 @@ public abstract class GpsActivity extends AppCompatActivity
 		{
 			// ignore
 		}
-    }
+	}
 
 	public static boolean between( double min, double cur, double max )
 	{
@@ -360,7 +395,7 @@ public abstract class GpsActivity extends AppCompatActivity
 			return;
 		}
 
-        try
+		try
 		{
 			if( m_file == null )
 			{
@@ -424,20 +459,20 @@ public abstract class GpsActivity extends AppCompatActivity
 	private static final String m_provider = "gps";
 	
 	void lockLocationChanged( Location newLocation, boolean fromGPS )
-    {
+	{
 		if( m_provider==null || newLocation.getProvider().equalsIgnoreCase("GPS") )
 		{
 			m_lock.lock();
 			try {
-		    	if( fromGPS )
+				if( fromGPS )
 				{
-			    	++m_locationFixCount;
-			    	if( m_calibration )
-			    	{
-			    		m_sumLongitude += newLocation.getLongitude();
-			    		m_sumLatitude += newLocation.getLatitude();
-			    		m_sumAltitude += newLocation.getAltitude();
-			    	}
+					++m_locationFixCount;
+					if( m_calibration )
+					{
+						m_sumLongitude += newLocation.getLongitude();
+						m_sumLatitude += newLocation.getLatitude();
+						m_sumAltitude += newLocation.getAltitude();
+					}
 					appendTrackPoint(newLocation);
 				}
 				
@@ -486,9 +521,9 @@ public abstract class GpsActivity extends AppCompatActivity
 							m_lastLocations[1] = newLocation;
 							m_goodGps = true;
 							if( m_processor.onLocationChanged(newLocation) )
-						    {
+							{
 								onLocationChanged( newLocation );
-						    }
+							}
 						}
 					}
 				}
@@ -496,7 +531,7 @@ public abstract class GpsActivity extends AppCompatActivity
 				m_lock.unlock();
 			}
 		}
-    }
+	}
 
 	protected void simulateLocationFix(Location newLocation)
 	{
@@ -506,8 +541,8 @@ public abstract class GpsActivity extends AppCompatActivity
 	@Override
 	public void onDestroy()
 	{
-        // Acquire a reference to the system Location Manager
-        // LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+		// Acquire a reference to the system Location Manager
+		// LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 		m_locationManager.removeUpdates( m_locationListener );
 //		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
@@ -521,8 +556,8 @@ public abstract class GpsActivity extends AppCompatActivity
 			// ignore
 		}
 		
-        super.onDestroy();
-    }
+		super.onDestroy();
+	}
 	
 	public boolean getHasLocation()
 	{

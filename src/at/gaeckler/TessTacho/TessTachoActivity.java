@@ -35,16 +35,13 @@ import java.text.DecimalFormat;
 import at.gaeckler.gps.GpsActivity;
 import at.gaeckler.gps.GpsProcessor;
 
-import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.GnssStatus;
 import android.location.Location;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -66,7 +63,6 @@ public class TessTachoActivity extends GpsActivity
 	private TachoWidget				m_theTacho = null;
 	private String					m_myStatus = "Willkommen";
 	private long					m_locationFixCount = 0;
-	private LocationManager			m_locationManager;
 	private Location				m_distanceLocation = null;
 
 	private Location				m_brakeLocation = null;
@@ -114,24 +110,9 @@ public class TessTachoActivity extends GpsActivity
 	private static final String			LOCATION_FIX_COUNT_KEY = "locationFixCount";
 	private static final String			DARK_MODE_KEY = "darkMode";
 
-	private void showMessage( String title, String message, final boolean terminate )
+	private void showMessage( String title, String message )
 	{
-		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage(message)
-			   .setTitle(title)
-			   .setCancelable(false)
-			   .setNegativeButton("Fertig", new DialogInterface.OnClickListener() {
-				   public void onClick(DialogInterface dialog, int id) {
-						dialog.cancel();
-						if( terminate )
-						{
-							finish();
-						}
-				   }
-			   })
-			   .setIcon(R.drawable.icon);
-		AlertDialog alert = builder.create();
-		alert.show();
+		showMessage(R.drawable.icon, title, message, false, null);
 	}
 
 	private void switchColorMode()
@@ -155,7 +136,6 @@ public class TessTachoActivity extends GpsActivity
 		System.out.println("onCreate starts");
 		if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
 		{
-			showMessage("TessTacho", "Berechtigung für Standort fehlt!", true);
 			return;
 		}
 
@@ -204,9 +184,6 @@ public class TessTachoActivity extends GpsActivity
 			loadPreferences();
 		}
 
-		// Acquire a reference to the system Location Manager
-		m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
 		createGpsTimer(FAST_GPS);
 		showSpeed( 0, 0 );
 		switchColorMode();
@@ -247,31 +224,20 @@ public class TessTachoActivity extends GpsActivity
 		{
 			targetSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_targetSpeed)));
 		}
-		alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
-
-				try
-				{
-					m_startSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
-					m_targetSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(targetSpeed.getText().toString())+0.5));
-					alertDialog.dismiss();
-				}
-				catch (NumberFormatException e)
-				{
-					// ignore, don't change speed
-				}
-			}
-		});
-
-
-		alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Abbruch", new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
+		alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", (dialog,which) -> {
+			try
+			{
+				m_startSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
+				m_targetSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(targetSpeed.getText().toString())+0.5));
 				alertDialog.dismiss();
 			}
+			catch (NumberFormatException e)
+			{
+				// ignore, don't change speed
+			}
 		});
 
+		alertDialog.setButton( DialogInterface.BUTTON_NEGATIVE, "Abbruch", (DialogInterface.OnClickListener) null);
 
 		alertDialog.setView(view);
 		alertDialog.show();
@@ -284,9 +250,8 @@ public class TessTachoActivity extends GpsActivity
 		String copyright = getString(R.string.app_copyright);
 		String url = getString(R.string.app_url);
 		showMessage(
-				name,
-				name + " "+version+"\n"+copyright+"\n"+url,
-				false
+			name,
+			name + " "+version+"\n"+copyright+"\n"+url
 		);
 	}
 	@Override
@@ -373,6 +338,7 @@ public class TessTachoActivity extends GpsActivity
 	@Override
 	protected void  onSaveInstanceState (Bundle outState)
 	{
+		super.onSaveInstanceState(outState);
 		outState.putDouble(TOTAL_DISTANCE_KEY, m_totalDistance );
 		outState.putDouble(DAY_DISTANCE_KEY, m_dayDistance );
 		outState.putDouble(MAX_ACCEL_KEY, m_maxAccel);
