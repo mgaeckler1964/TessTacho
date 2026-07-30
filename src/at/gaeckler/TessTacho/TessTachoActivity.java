@@ -52,6 +52,7 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 
 public class TessTachoActivity extends GpsActivity
@@ -335,8 +336,9 @@ public class TessTachoActivity extends GpsActivity
 		savePreferences();
 		super.onDestroy();
 	}
+
 	@Override
-	protected void  onSaveInstanceState (Bundle outState)
+	protected void  onSaveInstanceState (@NonNull Bundle outState)
 	{
 		super.onSaveInstanceState(outState);
 		outState.putDouble(TOTAL_DISTANCE_KEY, m_totalDistance );

@@ -40,7 +40,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -51,12 +50,13 @@ import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
 
-import androidx.annotation.DrawableRes;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public abstract class GpsActivity extends AppCompatActivity
+import at.gaeckler.MyActivity;
+
+public abstract class GpsActivity extends MyActivity
 {
 	protected static final String	NAME_KEY = "name";
 
@@ -94,40 +94,6 @@ public abstract class GpsActivity extends AppCompatActivity
 	private double	m_sumAltitude = 0;
 	private long	m_locationFixCount = 0;
 
-	public interface DialogCallback {
-		void onConfirmed(boolean confirmed);
-	}
-
-	public void showMessage(@DrawableRes int iconId, String title, String message, final boolean terminate, DialogCallback callback )
-	{
-		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage(message)
-				.setTitle(title)
-				.setCancelable(false)
-				.setPositiveButton("OK", (dialog, id) ->
-				{
-					dialog.dismiss();
-					if (terminate) {
-						finish();
-					}
-					if (callback != null)
-						callback.onConfirmed(true);
-				})
-				.setIcon(iconId)
-		;
-		if( callback != null )
-		{
-			builder.setNegativeButton("Abbruch", (dialog, id) ->
-			{
-				dialog.cancel();
-				if (callback != null) callback.onConfirmed(false);
-			});
-		}
-		AlertDialog alert = builder.create();
-		alert.show();
-	}
-
-
 	public boolean isCalibrationMode()
 	{
 		return m_calibration;
@@ -143,10 +109,12 @@ public abstract class GpsActivity extends AppCompatActivity
 			m_locationFixCount = 0;
 		}
 	}
+
 	public void disableCalibartion()
 	{
 		m_calibration = false;
 	}
+
 	public Location getCalibratedLocation( String provider )
 	{
 		Location location = new Location(provider);
@@ -202,19 +170,19 @@ public abstract class GpsActivity extends AppCompatActivity
 		m_locationListener = new LocationListener()
 		{
 			@Override
-			public void onProviderEnabled(String provider)
+			public void onProviderEnabled(@NonNull String provider)
 			{
 				onLocationEnabled();
 			}
 
 			@Override
-			public void onProviderDisabled(String provider)
+			public void onProviderDisabled(@NonNull String provider)
 			{
 				onLocationDisabled();
 			}
 
 			@Override
-			public void onLocationChanged(Location location)
+			public void onLocationChanged(@NonNull Location location)
 			{
 				lockLocationChanged( location, true );
 			}
@@ -241,7 +209,7 @@ public abstract class GpsActivity extends AppCompatActivity
 				super.onStopped();
 				onGnssStatusChanged2(GPS_EVENT_STOPPED, null);
 			}
-			public void onSatelliteStatusChanged(GnssStatus status)
+			public void onSatelliteStatusChanged(@NonNull GnssStatus status)
 			{
 				super.onSatelliteStatusChanged(status);
 				onGnssStatusChanged2(GPS_EVENT_SATELLITE_STATUS, status);
@@ -258,7 +226,7 @@ public abstract class GpsActivity extends AppCompatActivity
 	}
 	
 	@Override
-	protected void  onSaveInstanceState (Bundle outState)
+	protected void  onSaveInstanceState( @NonNull Bundle outState )
 	{
 		super.onSaveInstanceState(outState);
 
