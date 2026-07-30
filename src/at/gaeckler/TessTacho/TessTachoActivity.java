@@ -153,10 +153,6 @@ public class TessTachoActivity extends GpsActivity
 
 		if( savedInstanceState != null )
 		{
-			m_totalDistance = savedInstanceState.getDouble(TOTAL_DISTANCE_KEY);
-			m_startSpeed = savedInstanceState.getDouble(START_SPEED_KEY);
-			m_targetSpeed = savedInstanceState.getDouble(TARGET_SPEED_KEY);
-
 			m_dayDistance = savedInstanceState.getDouble(DAY_DISTANCE_KEY);
 			m_theTacho.setMaxTachoSpeed(savedInstanceState.getDouble(MAX_TACHO_SPEED_KEY));
 
@@ -178,12 +174,8 @@ public class TessTachoActivity extends GpsActivity
 
 			m_brakeStatusLabel.setText(savedInstanceState.getString(BRAKE_STATUS_KEY));
 			m_accelStatusLabel.setText(savedInstanceState.getString(ACCEL_STATUS_KEY));
-			m_darkMode = savedInstanceState.getBoolean(DARK_MODE_KEY,true);
 		}
-		else
-		{
-			loadPreferences();
-		}
+		loadPreferences();
 
 		createGpsTimer(FAST_GPS);
 		showSpeed( 0, 0 );
@@ -331,24 +323,14 @@ public class TessTachoActivity extends GpsActivity
 	}
 
 	@Override
-	public void onDestroy()
-	{
-		savePreferences();
-		super.onDestroy();
-	}
-
-	@Override
 	protected void  onSaveInstanceState (@NonNull Bundle outState)
 	{
 		super.onSaveInstanceState(outState);
-		outState.putDouble(TOTAL_DISTANCE_KEY, m_totalDistance );
 		outState.putDouble(DAY_DISTANCE_KEY, m_dayDistance );
 		outState.putDouble(MAX_ACCEL_KEY, m_maxAccel);
 		outState.putDouble(MAX_BRAKE_KEY, m_maxBrake);
 		outState.putDouble(MAX_TACHO_SPEED_KEY, m_theTacho.getMaxTachoSpeed());
 		outState.putDouble(MAX_SPEED_KEY, m_theTacho.getMaxSpeed());
-		outState.putDouble(START_SPEED_KEY, m_startSpeed);
-		outState.putDouble(TARGET_SPEED_KEY, m_targetSpeed);
 		outState.putLong(LOCATION_FIX_COUNT_KEY, m_locationFixCount);
 
 		if (m_brakeLocation!=null)
@@ -366,7 +348,6 @@ public class TessTachoActivity extends GpsActivity
 
 		outState.putString(BRAKE_STATUS_KEY, m_brakeStatusLabel.getText().toString());
 		outState.putString(ACCEL_STATUS_KEY, m_accelStatusLabel.getText().toString());
-		outState.putBoolean(DARK_MODE_KEY, m_darkMode);
 	}
 	
 	@Override
