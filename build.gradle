@@ -19,11 +19,11 @@ android {
 
 	defaultConfig {
 		applicationId "at.gaeckler.TessTacho"
-		minSdk 30
+		minSdk 26
 		targetSdk 36
-		versionCode 6
-		versionName "3.7.29"
-		resValue "string", "app_version", versionName
+		versionCode 7
+		versionName "3.7.31"
+		resValue "string", "app_version", "\"${versionName}\""
 	}
 
 	sourceSets {
