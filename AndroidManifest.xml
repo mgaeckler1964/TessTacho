@@ -1,19 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <application android:icon="@drawable/icon" android:label="@string/app_name" android:allowBackup="true"
-        android:enabled="true" android:supportsRtl="false"
-        android:theme="@style/Theme.MyTheme">
+	<application
+		android:icon="@drawable/icon"
+		android:label="@string/app_name"
+		android:allowBackup="true"
+		android:enabled="true"
+		android:supportsRtl="false"
+		android:theme="@style/Theme.MyTheme">
 
-        <activity android:name="at.gaeckler.TessTacho.TessTachoActivity"
-                  android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity android:name="at.gaeckler.TessTacho.StatScreen" />
-    </application>
+		<activity
+			android:icon="@drawable/icon"
+			android:name="TessTachoActivity"
+			android:exported="true">
+
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
+
+		<activity android:icon="@drawable/icon" android:name="StatScreen" />
+	</application>
 </manifest>
