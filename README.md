@@ -35,3 +35,7 @@ https://www.gaeckler.at/Software/software.htm#TessTacho (in Vienna)
 or
 
 http://www.gäckler.de/Software/software.htm#TessTacho (in Germany)
+
+<img width="1080" height="2340" alt="screen" src="https://github.com/user-attachments/assets/786349a1-6236-4b77-9030-41a6af36d461" />
+Tess Tacho in Light Mode
+
