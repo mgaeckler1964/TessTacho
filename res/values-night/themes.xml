@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Basis-Theme für den DUNKLEN Modus (gleicher Name!) -->
-    <style name="Theme.TessTacho" parent="Theme.AppCompat.DayNight.DarkActionBar">
+    <style name="Theme.MyTheme" parent="Theme.AppCompat.DayNight.DarkActionBar">
         <!-- Deine Farben für Dunkel -->
         <item name="colorPrimary">@color/black</item>
         <item name="colorAccent">@color/white</item>

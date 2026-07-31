@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Basis-Theme für den HELLEN Modus -->
-    <style name="Theme.TessTacho" parent="Theme.AppCompat.DayNight">
+    <style name="Theme.MyTheme" parent="Theme.AppCompat.DayNight">
         <!-- Deine Farben für Hell -->
         <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorAccent">@color/purple_200</item>
+        <item name="colorAccent">@color/teal_200</item>
         <item name="android:windowLightStatusBar">true</item>
 
         <!-- Hintergründe und Textfarben -->
