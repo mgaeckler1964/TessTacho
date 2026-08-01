@@ -30,6 +30,9 @@
 */
 package at.gaeckler.gps;
 
+import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -60,7 +63,8 @@ public abstract class GpsActivity extends MyActivity
 {
 	protected static final String	NAME_KEY = "name";
 
-	protected static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+	protected static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 	public static final int AUTO_GPS = 0;
 	public static final int FAST_GPS = 100;
 	public static final int NORMAL_GPS = 1000;
@@ -249,7 +253,7 @@ public abstract class GpsActivity extends MyActivity
 	{
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-		if (requestCode == LOCATION_PERMISSION_REQUEST_CODE)
+		if (requestCode == LOCATION_PERMISSION_REQUEST_CODE || requestCode == STORAGE_PERMISSION_REQUEST_CODE)
 		{
 			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
 			{
@@ -385,7 +389,10 @@ public abstract class GpsActivity extends MyActivity
 	}
 	private void appendTrackPoint(Location loc)
 	{
-		if(!m_logTrack || !Environment.isExternalStorageManager())
+		if(
+			!m_logTrack ||
+			ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+		)
 		{
 			return;
 		}
@@ -422,7 +429,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public void readTrackPoints()
 	{
-		if(!Environment.isExternalStorageManager())
+		if(ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
 		{
 			return;
 		}
