@@ -94,10 +94,18 @@ public abstract class GpsActivity extends MyActivity
 	private double	m_sumAltitude = 0;
 	private long	m_locationFixCount = 0;
 
+	/**
+	 * Check the calibration mode
+	 * @return true if calibration is active, false otherwise
+	 */
 	public boolean isCalibrationMode()
 	{
 		return m_calibration;
 	}
+
+	/**
+	 * Activate the calibration mode if not yet done
+	 */
 	public void enableCalibartion()
 	{
 		if( !m_calibration )
@@ -110,11 +118,19 @@ public abstract class GpsActivity extends MyActivity
 		}
 	}
 
+	/**
+	 * Deactivate the calibration mode
+	 */
 	public void disableCalibartion()
 	{
 		m_calibration = false;
 	}
 
+	/**
+	 * Get the calibrated location
+	 * @param provider the provider to use
+	 * @return a calibrated location that is the mean of all locations
+	 */
 	public Location getCalibratedLocation( String provider )
 	{
 		Location location = new Location(provider);
@@ -128,6 +144,10 @@ public abstract class GpsActivity extends MyActivity
 		return location;
 	}
 
+	/**
+	 * Get the number of location fixes
+	 * @return the number of location fixes
+	 */
 	public long getLocationFixCount()
 	{
 		return m_locationFixCount;
@@ -152,7 +172,6 @@ public abstract class GpsActivity extends MyActivity
 				new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
 				LOCATION_PERMISSION_REQUEST_CODE
 			);
-			finish();
 			return;
 		}
 		if( savedInstanceState != null ) {
@@ -224,7 +243,28 @@ public abstract class GpsActivity extends MyActivity
 
 		createGpsTimer(NORMAL_GPS);
 	}
-	
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
+	{
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+		if (requestCode == LOCATION_PERMISSION_REQUEST_CODE)
+		{
+			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+			{
+				// User said YES!
+				// Now you can call the initialization logic you skipped in onCreate
+				recreate(); // The easiest way: restart the activity now that we have permission
+			}
+			else
+			{
+				// User said NO.
+				// NOW you can call finish() because the app truly cannot work.
+				finish();
+			}
+		}
+	}
 	@Override
 	protected void  onSaveInstanceState( @NonNull Bundle outState )
 	{
@@ -237,6 +277,10 @@ public abstract class GpsActivity extends MyActivity
 		outState.putDouble(SUM_ALTITUDE_KEY, m_sumAltitude);
 	}
 
+	/**
+	 * Create the GPS timer that periodically checks the location
+	 * @param interval the interval in milliseconds
+	 */
 	public void createGpsTimer( int interval )
 	{
 		if (m_gpsTimer!=null)
@@ -273,6 +317,10 @@ public abstract class GpsActivity extends MyActivity
 			m_gpsInterval = 0;
 		}
 	}
+
+	/**
+	 * Remove the GPS timer
+	 */
 	public void removeGpsTimer()
 	{
 		if (m_gpsTimer!=null)
@@ -282,6 +330,11 @@ public abstract class GpsActivity extends MyActivity
 			m_gpsInterval = 0;
 		}
 	}
+
+	/**
+	 * Get the GPS interval
+	 * @return the interval in milliseconds
+	 */
 	public int getInterval( )
 	{
 		return m_gpsInterval;
@@ -352,10 +405,21 @@ public abstract class GpsActivity extends MyActivity
 		}
 	}
 
+	/**
+	 * Check if the given value is between the given min and max
+	 * @param min the minimum value
+	 * @param cur the current value
+	 * @param max the maximum value
+	 * @return true if the value is between the given min and max, false otherwise
+	 */
 	public static boolean between( double min, double cur, double max )
 	{
 		return ( min <= cur && cur <= max );
 	}
+
+	/**
+	 * Read the track points from the file
+	 */
 	public void readTrackPoints()
 	{
 		if(!Environment.isExternalStorageManager())
@@ -501,6 +565,10 @@ public abstract class GpsActivity extends MyActivity
 		}
 	}
 
+	/**
+	 * Simulate a location fix
+	 * @param newLocation the location to simulate
+	 */
 	protected void simulateLocationFix(Location newLocation)
 	{
 		lockLocationChanged( newLocation, false );
@@ -509,80 +577,143 @@ public abstract class GpsActivity extends MyActivity
 	@Override
 	public void onDestroy()
 	{
-		// Acquire a reference to the system Location Manager
-		// LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+		if( m_locationManager != null )
+		{
+			// Acquire a reference to the system Location Manager
+			// LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-		m_locationManager.removeUpdates( m_locationListener );
-//		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
-		m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
-		try 
-		{
-			closeGPSfileOS();
-		} 
-		catch (IOException e) 
-		{
-			// ignore
+			m_locationManager.removeUpdates(m_locationListener);
+			//		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
+			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
+			try
+			{
+				closeGPSfileOS();
+			}
+			catch(IOException e)
+			{
+				// ignore
+			}
 		}
-		
 		super.onDestroy();
 	}
-	
+
+	/**
+	 * Check if a location is available
+	 * @return true if a location is available, false otherwise
+	 */
 	public boolean getHasLocation()
 	{
 		return m_processor.hasLocation();
 	}
-	
+
+	/**
+	 * Get the last location
+	 * @return the last location null if no location is available
+	 */
 	public Location getLastLocation()
 	{
 		return m_processor.lastLocation();
 	}
-	
+
+	/**
+	 * Check if the accuracy of a GPS fix is ignored
+	 * @return the value
+	 */
 	public boolean getIgnoreAccuracy()
 	{
 		return m_processor.getIgnoreAccuracy();
 	}
+
+	/**
+	 * Set if the accuracy of a GPS fix should be ignored
+	 * @param ignoreAcuracy the value	 */
 	public void setIgnoreAccuracy(boolean ignoreAcuracy)
 	{
 		m_processor.setIgnoreAccuracy( ignoreAcuracy );
 	}
+
+	/**
+	 * Get the accuracy
+	 * @return the accuracy of the last gps fix
+	 */
 	public double getAccuracy()
 	{
 		return m_processor.getAccuracy();
 	}
-	
+
+	/**
+	 * Get the number of locations in the current buffer
+	 * @return the num of locations
+	 */
 	public int getNumLocations()
 	{
 		return m_processor.getNumLocations();
 	}
-	
+
+	/**
+	 * Get the current bearing
+	 * @return the current bearing
+	 */
 	public double getCurBearing()
 	{
 		return m_processor.getCurBearing();
 	}
+
+	/**
+	 * Get the current speed
+	 * @return the current speed in m/s
+	 */
 	public double getSpeed()
 	{
 		return m_processor.getSpeed();
 	}
+
+	/**
+	 * Get the current acceleration
+	 * @return the current acceleration in m/s^2
+	 */
 	public double getAccel()
 	{
 		return m_processor.getAccel();
 	}
+
+	/**
+	 * Get the current acceleration as a string for the UI
+	 * @return the current acceleration as a string
+	 */
 	public String getAccelStr()
 	{
 		return m_processor.getAccelStr();
 	}
+
+	/**
+	 * Get the resolution if the GPS receiver
+	 * @return the resolution
+	 */
 	public double getResolution()
 	{
 		return m_processor.getResolution();
 	}
+
+	/**
+	 * Get the break time (the time reducing the current speed=
+	 * @return the time in milliseconds
+	 */
 	public long getBreakTime()
 	{
 		return m_processor.getBreakTime();
 	}
+
+	/**
+	 * Resets the measuring of the break time
+	 * Set the break time (the time reducing the current speed=
+	 * @param breakTime the time in milliseconds
+	 */
 	public void setBreakTime( long breakTime )
 	{
 		m_processor.setBreakTime(breakTime);
 	}
+
 	private static String locationString( Location src, boolean raw )
 	{
 		String result = src.getProvider() + '|' + 
@@ -597,6 +728,12 @@ public abstract class GpsActivity extends MyActivity
 		}
 		return result;
 	}
+
+	/**
+	 * serializes a location to a string
+	 * @param src the location to convert
+	 * @return the string representation of the location
+	 */
 	public static String locationString( Location src )
 	{
 		return locationString(src, false);
@@ -647,6 +784,12 @@ public abstract class GpsActivity extends MyActivity
 		}
 		return newLocation;  
 	}
+
+	/**
+	 * Deserializes a location from a string
+	 * @param src the string representation of the location
+	 * @return the location
+	 */
 	public static Location locationString( String src )
 	{
 		return locationString( src, false );

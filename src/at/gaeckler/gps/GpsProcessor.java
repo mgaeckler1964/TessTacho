@@ -61,61 +61,130 @@ public class GpsProcessor
 		return (double)speedKmh / 3.6;
 	}
 
+	/**
+	 * Get the break time (the time reducing the current speed=
+	 * @return the time in milliseconds
+	 */
 	public long getBreakTime()
 	{
 		return m_breakTime + (
 			m_startBreak != null ? lastLocation().getTime()-m_startBreak.getTime() 
 								 :0);
 	}
+
+	/**
+	 * Resets the measuring of the break time
+	 * Set the break time (the time reducing the current speed=
+	 * @param breakTime the time in milliseconds
+	 */
 	public void setBreakTime( long breakTime )
 	{
 		m_breakTime = breakTime;
 		m_startBreak = null;
 	}
+
+	/**
+	 * Get the current bearing
+	 * @return the current bearing
+	 */
 	public double getCurBearing()
 	{
 		return m_curBearing;
 	}
+
+	/**
+	 * Get the current speed
+	 * @return the current speed in m/s
+	 */
 	public double getSpeed()
 	{
 		return m_speed;
 	}
+
+	/**
+	 * Get the current acceleration
+	 * @return the current acceleration in m/s^2
+	 */
 	public double getAccel()
 	{
 		return m_accel;
 	}
+
+	/**
+	 * Get the current acceleration as a string for the UI
+	 * @return the current acceleration as a string
+	 */
 	public String getAccelStr()
 	{
 		return m_accelStr;
 	}
+
+	/**
+	 * Get the accuracy
+	 * @return the accuracy of the last gps fix
+	 */
 	public double getAccuracy()
 	{
 		return m_accuracy;
 	}
+
+	/**
+	 * Check if the accuracy of a GPS fix is ignored
+	 * @return the value
+	 */
 	public boolean getIgnoreAccuracy()
 	{
 		return m_ignoreAccuracy;
 	}
+
+	/**
+	 * Set if the accuracy of a GPS fix should be ignored
+	 * @param ignoreAcuracy the value	 */
 	public void setIgnoreAccuracy(boolean ignoreAcuracy)
 	{
 		m_ignoreAccuracy = ignoreAcuracy;
 	}
+
+	/**
+	 * Check if a location is available
+	 * @return true if a location is available, false otherwise
+	 */
 	public boolean hasLocation() {
 		return m_locationList.peek() != null;
 	}
+
+	/**
+	 * Get the last location
+	 * @return the last location null if no location is available
+	 */
 	public Location lastLocation()
 	{
 		return m_locationList.peek();
 	}
+
+	/**
+	 * Get the number of locations in the current buffer
+	 * @return the num of locations
+	 */
 	public int getNumLocations()
 	{
 		return m_locationList.size();
 	}
+
+	/**
+	 * Get the resolution if the GPS receiver
+	 * @return the resolution
+	 */
 	public double getResolution()
 	{
 		return m_resolution;
 	}
 
+	/**
+	 * Process a new location
+	 * @param newLocation the new location
+	 * @return true if the location can be processed by the caller
+	 */
 	public boolean onLocationChanged( Location newLocation )
     {
     	double	lastSpeed, elapsedTime;

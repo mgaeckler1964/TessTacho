@@ -43,6 +43,15 @@ public class MyActivity extends AppCompatActivity
 		void onConfirmed(boolean confirmed);
 	}
 
+	/**
+	 * Shows a message (alert) dialog
+	 * @param iconId the icon to display
+	 * @param title the title of the alert
+	 * @param message the message to show
+	 * @param terminate if true, the activity will be finished after clicking OK (This is useful for
+	 *                  displaying an error before terminating)
+	 * @param callback You can pass a callback. In this case, a cancel button will be displayed, too.
+	 */
 	public void showMessage(@DrawableRes int iconId, String title, String message, final boolean terminate, DialogCallback callback )
 	{
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);

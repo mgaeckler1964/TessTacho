@@ -326,6 +326,10 @@ public class TessTachoActivity extends GpsActivity
 	protected void  onSaveInstanceState (@NonNull Bundle outState)
 	{
 		super.onSaveInstanceState(outState);
+
+		if( m_theTacho == null )
+			return;
+
 		outState.putDouble(DAY_DISTANCE_KEY, m_dayDistance );
 		outState.putDouble(MAX_ACCEL_KEY, m_maxAccel);
 		outState.putDouble(MAX_BRAKE_KEY, m_maxBrake);
