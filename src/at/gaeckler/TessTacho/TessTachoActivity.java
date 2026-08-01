@@ -135,7 +135,7 @@ public class TessTachoActivity extends GpsActivity
 	{
 		super.onCreate(savedInstanceState);
 		System.out.println("onCreate starts");
-		if( checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_DENIED )
+		if( !checkLocationPermission() )
 		{
 			return;
 		}

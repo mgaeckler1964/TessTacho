@@ -44,15 +44,20 @@ import java.util.concurrent.locks.ReentrantLock;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
+import android.provider.Settings;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -64,7 +69,7 @@ public abstract class GpsActivity extends MyActivity
 	protected static final String	NAME_KEY = "name";
 
 	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
-	protected static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
+	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 	public static final int AUTO_GPS = 0;
 	public static final int FAST_GPS = 100;
 	public static final int NORMAL_GPS = 1000;
@@ -162,22 +167,116 @@ public abstract class GpsActivity extends MyActivity
 	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
 
+	/**
+	 * Check if the location permission is granted
+	 * @return true if the location permission is granted, false otherwise
+	 */
+	public boolean checkLocationPermission()
+	{
+		return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+	}
+
+	/**
+	 * Request the location permission
+	 * @return false if the permission is already granted, true otherwise
+	 */
+	public boolean requestLocationPermission()
+	{
+		if(checkLocationPermission())	// already granted
+			return false;
+
+		// Suggestion: Request the permission instead of just failing
+		ActivityCompat.requestPermissions(this,
+				new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+				LOCATION_PERMISSION_REQUEST_CODE
+		);
+		return true;
+	}
+
+	public boolean checkReadStoragePermission()
+	{
+		return ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+	}
+
+	public boolean checkWriteStoragePermission()
+	{
+		return ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+	}
+
+
+	/**
+	 * The request code for the storage permission
+	 * rcOK: permission already granted
+	 * rcDenied: permission denied (not requested)
+	 * rcRequested: permission denied (requested)
+	 */
+	public enum RequestCode { rcOK, rcDenied, rcRequested }
+
+	/**
+	 * Request the storage permission
+	 * @param iconId the icon to use
+	 * @param title the title to use
+	 * @return the request code
+	 */
+	public RequestCode requestStoragePermission( @DrawableRes int iconId, String title )
+	{
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+		{
+			if (!Environment.isExternalStorageManager())
+			{
+				try
+				{
+					Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+					intent.addCategory("android.intent.category.DEFAULT");
+					intent.setData(Uri.parse(String.format("package:%s", getPackageName())));
+					startActivity(intent);
+					return RequestCode.rcRequested;
+				}
+				catch (Exception e)
+				{
+					Intent intent = new Intent();
+					intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+					startActivity(intent);
+					return RequestCode.rcRequested;
+				}
+			}
+		}
+		else if(
+				ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE)
+						!= PackageManager.PERMISSION_GRANTED
+						|| ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE)
+						!= PackageManager.PERMISSION_GRANTED
+		)
+		{
+			// Suggestion: Request the permission instead of just failing
+			ActivityCompat.requestPermissions(
+					this,
+					new String[]{READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE},
+					STORAGE_PERMISSION_REQUEST_CODE
+			);
+			return RequestCode.rcDenied;
+		}
+		else if( checkCallingOrSelfPermission("android.permission.READ_EXTERNAL_STORAGE") == PackageManager.PERMISSION_DENIED )
+		{
+			showMessage(iconId, title, "Read Permission Missing", true, null);
+			return RequestCode.rcDenied;
+		}
+		else if( checkCallingOrSelfPermission("android.permission.WRITE_EXTERNAL_STORAGE") == PackageManager.PERMISSION_DENIED )
+		{
+			showMessage( iconId, title, "Write Premission Missing", true, null);
+			return RequestCode.rcDenied;
+		}
+		return RequestCode.rcOK;
+	}
 	/** Called when the activity is first created. */
+	@SuppressLint("MissingPermission")
 	@Override
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
-
-		if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-				!= PackageManager.PERMISSION_GRANTED)
-		{
-			// Suggestion: Request the permission instead of just failing
-			ActivityCompat.requestPermissions(this,
-				new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-				LOCATION_PERMISSION_REQUEST_CODE
-			);
+		if( requestLocationPermission() )
 			return;
-		}
+
 		if( savedInstanceState != null ) {
 			m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
 			m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
@@ -389,10 +488,7 @@ public abstract class GpsActivity extends MyActivity
 	}
 	private void appendTrackPoint(Location loc)
 	{
-		if(
-			!m_logTrack ||
-			ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-		)
+		if( !m_logTrack || !checkWriteStoragePermission() )
 		{
 			return;
 		}
@@ -429,7 +525,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public void readTrackPoints()
 	{
-		if(ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+		if(!checkReadStoragePermission())
 		{
 			return;
 		}
