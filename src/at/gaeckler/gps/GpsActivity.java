@@ -395,14 +395,11 @@ public abstract class GpsActivity extends MyActivity
 			m_gpsInterval = interval;
 			m_gpsTimer = new CountDownTimer(100000000, interval) {
 
-				/// TODO remove
-				private Location m_lastKnown=null;
-		
 				@Override
 				@SuppressLint("MissingPermission")
 				public void onTick(long millisUntilFinished) {
 					Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-					if (newLocation != null && (m_lastKnown==null || !m_lastKnown.equals(newLocation)))
+					if( newLocation != null )
 					{
 						lockLocationChanged(newLocation, true);
 					}
@@ -536,38 +533,36 @@ public abstract class GpsActivity extends MyActivity
 			{
 				m_file = getExternalFileName(TRACK_FILE);
 			}
-			if( m_file != null )
+
+			BufferedReader  reader = new BufferedReader(new FileReader(m_file));
+
+			while( true )
 			{
-				BufferedReader  reader = new BufferedReader(new FileReader(m_file));
-			
-				while( true ) 
+				String line = reader.readLine();
+				if( line == null )
 				{
-					String line = reader.readLine();
-					if( line == null )
-					{
-						break;
-					}
-					Location newLocation = locationString(line,true);
-
-					// 14.4426064, 48.3637592, 
-					// 14.4481877, 48.3570682
-/*					
-					double lon = newLocation.getLongitude(); 
-					double lat = newLocation.getLatitude();
-
-					if( between( 14.44, lon, 14.46 )
-					&&  between( 48.350, lat, 48.37 ) )
-					{
-						System.out.println("I'm in");
-					}
-*/
-					lockLocationChanged(newLocation,false);
+					break;
 				}
+				Location newLocation = locationString(line,true);
 
-				reader.close();
-				m_logTrack = true;
+				// 14.4426064, 48.3637592,
+				// 14.4481877, 48.3570682
+/*					
+				double lon = newLocation.getLongitude();
+				double lat = newLocation.getLatitude();
+
+				if( between( 14.44, lon, 14.46 )
+				&&  between( 48.350, lat, 48.37 ) )
+				{
+					System.out.println("I'm in");
+				}
+*/
+				lockLocationChanged(newLocation,false);
 			}
-		} 
+
+			reader.close();
+			m_logTrack = true;
+		}
 		catch (IOException e) 
 		{
 			// TODO Auto-generated catch block
@@ -591,11 +586,10 @@ public abstract class GpsActivity extends MyActivity
 	private Location[] m_lastLocations;
 	private boolean m_goodGps = false;
 	private long m_startTime = 0;
-	private static final String m_provider = "gps";
-	
+
 	void lockLocationChanged( Location newLocation, boolean fromGPS )
 	{
-		if( m_provider==null || newLocation.getProvider().equalsIgnoreCase("GPS") )
+		if( newLocation.getProvider().equalsIgnoreCase("GPS") )
 		{
 			m_lock.lock();
 			try {
