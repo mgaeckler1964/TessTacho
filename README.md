@@ -36,6 +36,8 @@ or
 
 http://www.gäckler.de/Software/software.htm#TessTacho (in Germany)
 
-<img width="1080" height="2340" alt="screen" src="https://github.com/user-attachments/assets/786349a1-6236-4b77-9030-41a6af36d461" />
+## Screenshot
+<img width="270" height="585" alt="screen - Kopie" src="https://github.com/user-attachments/assets/faf03998-f56f-4c8f-b464-28acd23757f4" />
+
 Tess Tacho in Light Mode
 
