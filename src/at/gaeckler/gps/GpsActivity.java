@@ -70,21 +70,22 @@ public abstract class GpsActivity extends MyActivity
 
 	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
-	public static final int AUTO_GPS = 0;
-	public static final int FAST_GPS = 100;
-	public static final int NORMAL_GPS = 1000;
-	public static final int SLOW_GPS = 10000;
+	public static final int AUTO_GPS = 0;				// let the GPS system decide when to send new positions
+	public static final int FAST_GPS = 100;				// ask every 100ms for a new position
+	public static final int NORMAL_GPS = 1000;			// ask every Second for a new position
+	public static final int SLOW_GPS = 10000;			// ask every 10 seconds for a new position
 
 	private static final double MAX_SPEED = 100;
 	private static final double MAX_ACCEL = 100;
 
-	public static final int GPS_EVENT_STARTED = 1;
-	public static final int GPS_EVENT_SATELLITE_STATUS = 2;
-	public static final int GPS_EVENT_FIRST_FIX = 3;
-	public static final int GPS_EVENT_STOPPED = 4;
+	// GPS events, handle these events in your onGnssStatusChanged2
+	public static final int GPS_EVENT_STARTED = 1;				// GPS started GnssStatus.Callback received onStarted()
+	public static final int GPS_EVENT_SATELLITE_STATUS = 2;		// GPS started GnssStatus.Callback received onSatelliteStatusChanged()
+	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
+	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
 
-	CountDownTimer		m_gpsTimer = null;
-	LocationManager		m_locationManager = null;
+	private CountDownTimer		m_gpsTimer = null;
+	private LocationManager		m_locationManager = null;
 	private LocationListener	m_locationListener = null;
 
 	private GnssStatus.Callback	m_gnssStatusListener = null;

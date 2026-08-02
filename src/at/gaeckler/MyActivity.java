@@ -52,25 +52,25 @@ public class MyActivity extends AppCompatActivity
 	 *                  displaying an error before terminating)
 	 * @param callback You can pass a callback. In this case, a cancel button will be displayed, too.
 	 */
-	public void showMessage(@DrawableRes int iconId, String title, String message, final boolean terminate, DialogCallback callback )
+	public void showMessage(@DrawableRes int iconId, String title, String message, final boolean terminate, final DialogCallback callback )
 	{
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setMessage(message)
-				.setTitle(title)
-				.setCancelable(false)
-				.setPositiveButton("OK", (dialog, id) ->
+			.setTitle(title)
+			.setCancelable(false)
+			.setPositiveButton("OK", (dialog, id) ->
+			{
+				dialog.dismiss();
+				if (callback != null)
 				{
-					dialog.dismiss();
-					if (terminate)
-					{
-						finish();
-					}
-					if (callback != null)
-					{
-						callback.onConfirmed(true);
-					}
-				})
-				.setIcon(iconId)
+					callback.onConfirmed(true);
+				}
+				if (terminate)
+				{
+					finish();
+				}
+			})
+			.setIcon(iconId)
 		;
 		if( callback != null )
 		{
