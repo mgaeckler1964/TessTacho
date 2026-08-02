@@ -558,7 +558,10 @@ public abstract class GpsActivity extends MyActivity
 					System.out.println("I'm in");
 				}
 */
-				lockLocationChanged(newLocation,false);
+				if( newLocation != null )
+				{
+					lockLocationChanged(newLocation, false);
+				}
 			}
 
 			reader.close();
@@ -588,9 +591,13 @@ public abstract class GpsActivity extends MyActivity
 	private boolean m_goodGps = false;
 	private long m_startTime = 0;
 
-	void lockLocationChanged( Location newLocation, boolean fromGPS )
+	void lockLocationChanged( @NonNull Location newLocation, boolean fromGPS )
 	{
-		if( newLocation.getProvider().equalsIgnoreCase("GPS") )
+		if( !fromGPS
+		|| (
+			null != newLocation.getProvider()
+			&& newLocation.getProvider().equalsIgnoreCase(LocationManager.GPS_PROVIDER) )
+		)
 		{
 			m_lock.lock();
 			try {
@@ -667,7 +674,7 @@ public abstract class GpsActivity extends MyActivity
 	 * Simulate a location fix
 	 * @param newLocation the location to simulate
 	 */
-	protected void simulateLocationFix(Location newLocation)
+	protected void simulateLocationFix( @NonNull Location newLocation)
 	{
 		lockLocationChanged( newLocation, false );
 	}
@@ -832,7 +839,7 @@ public abstract class GpsActivity extends MyActivity
 	 * @param src the location to convert
 	 * @return the string representation of the location
 	 */
-	public static String locationString( Location src )
+	public static String locationString( @NonNull Location src )
 	{
 		return locationString(src, false);
 	}
