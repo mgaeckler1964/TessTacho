@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="welcome">Willkommen</string>
+
+    <string name="textView1">Anfangsgeschwindigkeit</string>
+    <string name="textView2">Zielgeschwindigkeit</string>
+
+    <string name="statistics">Statistik</string>
+    <string name="accelLabel">Beschleunigung</string>
+    <string name="about">Info</string>
+    <string name="exit">Beenden</string>
+    <string name="darkMode">Darkmode</string>
+
+    <string name="statusLabel">Status</string>
+    <string name="brakeStatus">Bremsen</string>
+
+    <string name="maxSpeedLabel">Höchstgeschwindigkeit:</string>
+    <string name="maxAccelLabel">Höchste Beschleunigung:</string>
+    <string name="maxBrakeLabel">Höchste Verzögerung:</string>
+    <string name="brakeSpeedLabel">Bremsgeschwindigkeit:</string>
+    <string name="brakeDistanceLabel">Bremsweg:</string>
+    <string name="resolutionLabel">GPS Auflösung:</string>
+    <string name="quitLabel">Zurück</string>
+
+    <string name="cancelLabel">Abbruch</string>
+    <string name="gpsEnabled">GPS ist eingeschaltet.</string>
+    <string name="gpsDisabled">GPS ist abgeschaltet.</string>
+    <string name="gpsStarted">GPS gestarted</string>
+    <string name="gpsStoped">GPS gestopped</string>
+    <string name="gpsFirstFix">Erster GPS fix</string>
+    <string name="gpsSatellites2">GPS Satelliten: %1$d/%2$d</string>
+	<string name="accuracy_format">%1$s Genauigkeit: %2$.3fm  %3$d/%4$d</string>
+
+    <string name="accelTest">Beschleunigungstest</string>
+    <string name="accelTestPrompt">Geben Sie hier die Start- und Zielgeschwindigkeit ein:</string>
+</resources>

@@ -1,29 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TessTacho</string>
-    <string name="app_copyright">(c) 2013-2026 by Martin Gäckler</string>
+    <string name="app_copyright">&#169; 2013&#8211;2026 by Martin Gäckler</string>
     <string name="app_url">https://www.gaeckler.at/</string>
 
-    <string name="textView1">Anfangsgeschwindigkeit</string>
-    <string name="textView2">Zielgeschwindigkeit</string>
+    <string name="welcome">Welcome</string>
 
-    <string name="statistics">Statistik</string>
-    <string name="accelTest">Beschleunigung</string>
+    <string name="textView1">Start Speed</string>
+    <string name="textView2">Target Speed</string>
+
+    <string name="statistics">Statistic</string>
+    <string name="accelLabel">Acceleration</string>
     <string name="about">Info</string>
-    <string name="exit">Beenden</string>
-    <string name="darkMode">Darkmode</string>
+    <string name="exit">Exit</string>
+    <string name="darkMode">Dark Mode</string>
 
-    <string name="statusLabel">Status</string>
-    <string name="brakeStatus">Bremsen</string>
-    <string name="accelStatus">Beschleunigung</string>
-    
-    <string name="maxSpeedLabel">Höchstgeschwindigkeit:</string>
-    <string name="maxAccelLabel">Höchste Beschleunigung:</string>
-    <string name="maxBrakeLabel">Höchste Verzögerung:</string>
-    <string name="brakeSpeedLabel">Bremsgeschwindigkeit:</string>
-    <string name="brakeDistanceLabel">Bremsweg:</string>
-    <string name="resolutionLabel">GPS Auflösung:</string>
-    <string name="quitLabel">Zurück</string>
-    
-    
+    <string name="statusLabel">State</string>
+    <string name="brakeStatus">Brake</string>
+
+    <string name="maxSpeedLabel">Top Speed:</string>
+    <string name="maxAccelLabel">Top Accel:</string>
+    <string name="maxBrakeLabel">Top Brake:</string>
+    <string name="brakeSpeedLabel">Brake Speed:</string>
+    <string name="brakeDistanceLabel">Brake Length:</string>
+    <string name="resolutionLabel">GPS Resolution:</string>
+    <string name="quitLabel">Back</string>
+
+    <string name="okLabel">OK</string>
+    <string name="cancelLabel">Cancel</string>
+    <string name="gpsEnabled">GPS is enabled.</string>
+    <string name="gpsDisabled">GPS is disabled.</string>
+    <string name="gpsStarted">GPS started</string>
+    <string name="gpsStoped">GPS stoped</string>
+    <string name="gpsFirstFix">GPS first fix</string>
+    <string name="gpsSatellites2">GPS satellites: %1$d/%2$d</string>
+    <string name="accuracy_format">%1$s Accuracy: %2$.3fm %3$d/%4$d</string>
+
+    <string name="accelTest">Acceleration Test</string>
+    <string name="accelTestPrompt">Enter Start- and Target Speed ein:</string>
 </resources>

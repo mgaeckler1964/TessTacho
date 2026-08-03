@@ -30,8 +30,6 @@
 */
 package at.gaeckler.TessTacho;
 
-import java.text.DecimalFormat;
-
 import at.gaeckler.gps.GpsActivity;
 import at.gaeckler.gps.GpsProcessor;
 
@@ -39,7 +37,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.location.GnssStatus;
 import android.location.Location;
 import android.os.Bundle;
@@ -62,7 +59,7 @@ public class TessTachoActivity extends GpsActivity
 	private TextView				m_accelStatusLabel = null;
 	private boolean					m_darkMode = false;
 	private TachoWidget				m_theTacho = null;
-	private String					m_myStatus = "Willkommen";
+	private String					m_myStatus = null;
 	private long					m_locationFixCount = 0;
 	private Location				m_distanceLocation = null;
 
@@ -84,9 +81,7 @@ public class TessTachoActivity extends GpsActivity
 	private double 					m_maxBrake = 0;
 	private double					m_totalDistance = 0.0;
 	private double					m_dayDistance = 0.0;
-	private double					m_accuracy = 0.0;
 
-	private static final DecimalFormat	s_accuracyFormat = new DecimalFormat( "Genauigkeit: 0.000m" );
 	private static final String			CONFIGURATION = "TessTacho.cfg";
 	
 	public  static final String			MAX_SPEED_KEY = "maxSpeed"; 
@@ -145,6 +140,7 @@ public class TessTachoActivity extends GpsActivity
 		setContentView(R.layout.main);
 
 		m_statusLabel = findViewById( R.id.statusLabel );
+		m_myStatus = getString(R.string.welcome);
 		setStatus( m_myStatus );
 		m_theTacho = findViewById( R.id.myTacho );
 
@@ -201,10 +197,10 @@ public class TessTachoActivity extends GpsActivity
 		LayoutInflater layoutInflater = getLayoutInflater();
 		final View view = layoutInflater.inflate(R.layout.accel_test, null);
 		final AlertDialog alertDialog = new AlertDialog.Builder(this).create();
-		alertDialog.setTitle("Beschleunigungstest");
+		alertDialog.setTitle(getString(R.string.accelTest));
 		alertDialog.setIcon(R.drawable.icon);
 		alertDialog.setCancelable(false);
-		alertDialog.setMessage("Geben Sie hier die Start- und Zielgeschwindigkeit ein:");
+		alertDialog.setMessage(getString(R.string.accelTestPrompt));
 
 
 		final EditText startSpeed = view.findViewById(R.id.startSpeed);
@@ -217,7 +213,7 @@ public class TessTachoActivity extends GpsActivity
 		{
 			targetSpeed.setText(Long.toString(GpsProcessor.speedToKmh(m_targetSpeed)));
 		}
-		alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", (dialog,which) -> {
+		alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, getString(R.string.okLabel), (dialog,which) -> {
 			try
 			{
 				m_startSpeed = GpsProcessor.speedToMs((long)(Double.parseDouble(startSpeed.getText().toString())+0.5));
@@ -230,7 +226,7 @@ public class TessTachoActivity extends GpsActivity
 			}
 		});
 
-		alertDialog.setButton( DialogInterface.BUTTON_NEGATIVE, "Abbruch", (DialogInterface.OnClickListener) null);
+		alertDialog.setButton( DialogInterface.BUTTON_NEGATIVE, getString(R.string.cancelLabel), (DialogInterface.OnClickListener) null);
 
 		alertDialog.setView(view);
 		alertDialog.show();
@@ -360,7 +356,6 @@ public class TessTachoActivity extends GpsActivity
 		double	distance;
 
 		++m_locationFixCount;
-		m_accuracy = newLocation.getAccuracy();
 		setStatus( m_myStatus );
 
 		if( m_distanceLocation != null )
@@ -465,33 +460,48 @@ public class TessTachoActivity extends GpsActivity
 	void setStatus( String text )
 	{
 		m_myStatus = text;
-		m_statusLabel.setText( text + " " + s_accuracyFormat.format(m_accuracy) + " " + m_locationFixCount );
+		if( m_statusLabel != null )
+		{
+			m_statusLabel.setText(getString(
+					R.string.accuracy_format,
+					text,
+					getAccuracy(),
+					getLocationFixCount(),
+					getNumLocations()
+			));
+		}
 	}
 
 	@Override
 	public void onLocationEnabled() {
-		setStatus( "GPS ist eingeschaltet");
+		setStatus( getString(R.string.gpsEnabled) );
 	}
 	@Override
 	public void onLocationDisabled() {
-		setStatus( "GPS ist abgeschaltet");
+		setStatus( getString(R.string.gpsDisabled) );
 		showSpeed( 0, 0 );
 	}
 	@Override
 	public void onGnssStatusChanged2(int event, GnssStatus status)
 	{
-		if( event == GPS_EVENT_STARTED )
-			setStatus( "GPS gestartet");
-		else if( event == GPS_EVENT_STOPPED )
-			setStatus( "GPS gestoppt");
-		else if( event == GPS_EVENT_FIRST_FIX )
-			setStatus( "GPS erster Fix");
-		else if( event == GPS_EVENT_SATELLITE_STATUS  )
+		if(event == GPS_EVENT_STARTED)
+		{
+			setStatus(getString(R.string.gpsStarted));
+		}
+		else if(event == GPS_EVENT_STOPPED)
+		{
+			setStatus(getString(R.string.gpsStoped));
+		}
+		else if(event == GPS_EVENT_FIRST_FIX)
+		{
+			setStatus(getString(R.string.gpsFirstFix));
+		}
+		else if(event == GPS_EVENT_SATELLITE_STATUS)
 		{
 			int Satellites = status.getSatelliteCount();
 			int SatellitesInFix = 0;
 
-			for (int i = 0; i < Satellites; i++)
+			for(int i = 0; i < Satellites; i++)
 			{
 				if(status.usedInFix(i))
 				{
@@ -499,7 +509,7 @@ public class TessTachoActivity extends GpsActivity
 				}
 			}
 
-			setStatus( "GPS Satelliten: " + SatellitesInFix + "/" + Satellites );
+			setStatus(getString(R.string.gpsSatellites2, SatellitesInFix, Satellites));
 		}
 	}
 }
