@@ -34,7 +34,13 @@ package at.gaeckler;
 import android.app.AlertDialog;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.Locale;
 
 public class MyActivity extends AppCompatActivity
 {
@@ -83,4 +89,31 @@ public class MyActivity extends AppCompatActivity
 		AlertDialog alert = builder.create();
 		alert.show();
 	}
+
+	/**
+	 * Parses a double from a string.
+	 * @param input the string to parse
+	 * @return the parsed double
+	 * @throws NumberFormatException in case of an format error
+	 */
+	public double parseInternationalDouble(@NonNull String input) throws NumberFormatException
+	{
+		try
+		{
+			char localSeparator = DecimalFormatSymbols.getInstance().getDecimalSeparator();
+			input = input
+					.replace('.', localSeparator)
+					.replace(',', localSeparator);
+			return  NumberFormat.getInstance(Locale.getDefault())
+					.parse(input)
+					.doubleValue();
+		}
+		catch(ParseException e)
+		{
+			// since the original Java parser throws NumberFormatException we will also do it
+			// so that it is easier to change the parser.
+			throw new NumberFormatException(input);
+		}
+	}
+
 }
