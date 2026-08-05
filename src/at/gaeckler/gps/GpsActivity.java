@@ -39,6 +39,9 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
 
 import android.Manifest;
@@ -66,32 +69,34 @@ import at.gaeckler.MyActivity;
 
 public abstract class GpsActivity extends MyActivity
 {
-	protected static final String	NAME_KEY = "name";
-
-	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
-	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
-	public static final int AUTO_GPS = 0;				// let the GPS system decide when to send new positions
-	public static final int FAST_GPS = 100;				// ask every 100ms for a new position
-	public static final int NORMAL_GPS = 1000;			// ask every Second for a new position
-	public static final int SLOW_GPS = 10000;			// ask every 10 seconds for a new position
-
-	private static final double MAX_SPEED = 100;
-	private static final double MAX_ACCEL = 100;
-
 	// GPS events, handle these events in your onGnssStatusChanged2
 	public static final int GPS_EVENT_STARTED = 1;				// GPS started GnssStatus.Callback received onStarted()
 	public static final int GPS_EVENT_SATELLITE_STATUS = 2;		// GPS started GnssStatus.Callback received onSatelliteStatusChanged()
 	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
 	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
 
-	private CountDownTimer		m_gpsTimer = null;
-	private LocationManager		m_locationManager = null;
-	private LocationListener	m_locationListener = null;
+	/*
+	-----------------------------------------------------------------------------------------------
+		Helper
+	-----------------------------------------------------------------------------------------------
+	 */
+	/**
+	 * Check if the given value is between the given min and max
+	 * @param min the minimum value
+	 * @param cur the current value
+	 * @param max the maximum value
+	 * @return true if the value is between the given min and max, false otherwise
+	 */
+	public static boolean between( double min, double cur, double max )
+	{
+		return ( min <= cur && cur <= max );
+	}
 
-	private GnssStatus.Callback	m_gnssStatusListener = null;
-	private final GpsProcessor	m_processor = new GpsProcessor();
-	private int m_gpsInterval = 0;
-
+	/*
+	-----------------------------------------------------------------------------------------------
+		Calibration
+	-----------------------------------------------------------------------------------------------
+	 */
 	private static final String	CALIBRATION_KEY = "calibrationMode";
 	private static final String	FIX_COUNT_KEY = "fixCount";
 	private static final String	SUM_LONGITUDE_KEY = "sumLongitude";
@@ -162,11 +167,14 @@ public abstract class GpsActivity extends MyActivity
 	{
 		return m_locationFixCount;
 	}
-	
-	public abstract void onLocationEnabled();
-	public abstract void onLocationDisabled();
-	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
-	public abstract void onLocationChanged( Location newLocation );
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		Permissions
+	-----------------------------------------------------------------------------------------------
+	 */
+	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 
 	/**
 	 * Check if the location permission is granted
@@ -269,6 +277,43 @@ public abstract class GpsActivity extends MyActivity
 		}
 		return RequestCode.rcOK;
 	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
+	{
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+		if (requestCode == LOCATION_PERMISSION_REQUEST_CODE || requestCode == STORAGE_PERMISSION_REQUEST_CODE)
+		{
+			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+			{
+				// User said YES!
+				// Now you can call the initialization logic you skipped in onCreate
+				recreate(); // The easiest way: restart the activity now that we have permission
+			}
+			else
+			{
+				// User said NO.
+				// NOW you can call finish() because the app truly cannot work.
+				finish();
+			}
+		}
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		Basic Activity implementation
+	-----------------------------------------------------------------------------------------------
+	 */
+
+	private LocationManager		m_locationManager = null;
+	private LocationListener	m_locationListener = null;
+	private GnssStatus.Callback	m_gnssStatusListener = null;
+	public static final int AUTO_GPS = 0;				// let the GPS system decide when to send new positions
+	public static final int FAST_GPS = 100;				// ask every 100ms for a new position
+	public static final int NORMAL_GPS = 1000;			// ask every Second for a new position
+	public static final int SLOW_GPS = 10000;			// ask every 10 seconds for a new position
+
 	/** Called when the activity is first created. */
 	@SuppressLint("MissingPermission")
 	@Override
@@ -349,27 +394,6 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	@Override
-	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
-	{
-		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-		if (requestCode == LOCATION_PERMISSION_REQUEST_CODE || requestCode == STORAGE_PERMISSION_REQUEST_CODE)
-		{
-			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-			{
-				// User said YES!
-				// Now you can call the initialization logic you skipped in onCreate
-				recreate(); // The easiest way: restart the activity now that we have permission
-			}
-			else
-			{
-				// User said NO.
-				// NOW you can call finish() because the app truly cannot work.
-				finish();
-			}
-		}
-	}
-	@Override
 	protected void  onSaveInstanceState( @NonNull Bundle outState )
 	{
 		super.onSaveInstanceState(outState);
@@ -379,6 +403,412 @@ public abstract class GpsActivity extends MyActivity
 		outState.putDouble(SUM_LONGITUDE_KEY, m_sumLongitude);
 		outState.putDouble(SUM_LATITUDE_KEY, m_sumLatitude);
 		outState.putDouble(SUM_ALTITUDE_KEY, m_sumAltitude);
+	}
+
+	@Override
+	public void onDestroy()
+	{
+		if( m_locationManager != null )
+		{
+			// Acquire a reference to the system Location Manager
+			// LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+			m_locationManager.removeUpdates(m_locationListener);
+			//		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
+			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
+			try
+			{
+				closeRAWfileOS();
+			}
+			catch(IOException e)
+			{
+				// ignore
+			}
+		}
+		super.onDestroy();
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		RAW file
+	-----------------------------------------------------------------------------------------------
+	 */
+	// used for debugging
+	private Boolean				m_logRaw = false;
+	private File				m_rawFile = null;
+	private FileOutputStream	m_rawFileOS = null;
+	private PrintWriter			m_rawPos = null;
+	private static final String RAW_TRACK_FILE = "temp.gak.gps.txt";
+
+	private static File getExternalFileName( String filename )
+	{
+		File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+
+		System.out.println(dir.getPath());
+		if( !dir.exists() )
+		{
+			dir.mkdir();
+		}
+		File file = new File(dir, filename);
+		System.out.println(file.getPath());
+
+		return file;
+	}
+
+	private void openRAWfileOS() throws IOException
+	{
+		m_rawFile = getExternalFileName(RAW_TRACK_FILE);
+		m_rawFile.createNewFile();
+
+		m_rawFileOS = new FileOutputStream(m_rawFile, true);
+		m_rawPos = new PrintWriter(m_rawFileOS);
+	}
+	private void closeRAWfileOS() throws IOException
+	{
+		if( m_rawPos != null )
+		{
+			m_rawPos.close();
+			m_rawPos = null;
+		}
+		if( m_rawFileOS != null )
+		{
+			m_rawFileOS.close();
+			m_rawFileOS = null;
+		}
+
+	}
+	private void appendTrackPoint(Location loc)
+	{
+		if( !m_logRaw || !checkWriteStoragePermission() )
+		{
+			return;
+		}
+		try
+		{
+			if( m_rawPos == null )
+			{
+				openRAWfileOS();
+			}
+			m_rawPos.println(locationString(loc, true));
+			m_rawPos.flush();
+			m_rawFileOS.flush();
+		}
+		catch( Exception e)
+		{
+			// ignore
+		}
+	}
+
+	/**
+	 * Read the track points from the file
+	 */
+	public void readTrackPoints()
+	{
+		if(!checkReadStoragePermission())
+		{
+			return;
+		}
+
+		try
+		{
+			if( m_rawFile == null )
+			{
+				m_rawFile = getExternalFileName(RAW_TRACK_FILE);
+			}
+
+			BufferedReader  reader = new BufferedReader(new FileReader(m_rawFile));
+
+			while( true )
+			{
+				String line = reader.readLine();
+				if( line == null )
+				{
+					break;
+				}
+				Location newLocation = locationString(line,true);
+
+				// 14.4426064, 48.3637592,
+				// 14.4481877, 48.3570682
+/*
+				double lon = newLocation.getLongitude();
+				double lat = newLocation.getLatitude();
+
+				if( between( 14.44, lon, 14.46 )
+				&&  between( 48.350, lat, 48.37 ) )
+				{
+					System.out.println("I'm in");
+				}
+*/
+				if( newLocation != null )
+				{
+					lockLocationChanged(newLocation, false);
+				}
+			}
+
+			reader.close();
+			m_logRaw = true;
+		}
+		catch (IOException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		XML file
+	-----------------------------------------------------------------------------------------------
+	 */
+	private static final String XML_TRACK_FILE = "temp.gak.xml";
+	private File				m_xmlFile = null;
+	private FileOutputStream	m_xmlFileOS = null;
+	private PrintWriter			m_xmlPos = null;
+
+	private void openXMLos() throws IOException
+	{
+		m_xmlFile = getExternalFileName(XML_TRACK_FILE);
+		m_xmlFile.createNewFile();
+
+		m_xmlFileOS = new FileOutputStream(m_xmlFile, true);
+		m_xmlPos = new PrintWriter(m_xmlFileOS);
+	}
+	public void closeXMLos() throws IOException
+	{
+		if( m_xmlPos != null )
+		{
+			m_xmlPos.close();
+			m_xmlPos = null;
+		}
+		if( m_xmlFileOS != null )
+		{
+			m_xmlFileOS.close();
+			m_xmlFileOS = null;
+		}
+
+	}
+
+	public void appendTrackPoint2XML(Location loc)
+	{
+		try
+		{
+			if( m_xmlPos == null )
+			{
+				openXMLos();
+			}
+			m_xmlPos.write("<trkpt lon=\"");
+			m_xmlPos.print(loc.getLongitude());
+			m_xmlPos.write("\" lat=\"");
+			m_xmlPos.print(loc.getLatitude());
+			m_xmlPos.write("\">\n");
+			m_xmlPos.write("<ele>");
+			m_xmlPos.print(getCorrectedAltidute(loc));
+			m_xmlPos.write("</ele>\n");
+			m_xmlPos.write("<geoidheight>");
+			m_xmlPos.print(loc.getAltitude());
+			m_xmlPos.write("</geoidheight>\n");
+			m_xmlPos.write("<time>");
+			m_xmlPos.print(getDateLoc(loc, true));
+			m_xmlPos.write("</time>\n");
+			m_xmlPos.write("<utcStamp>");
+			m_xmlPos.print(loc.getTime());
+			m_xmlPos.write("</utcStamp>\n");
+			m_xmlPos.write("<speed>");
+			m_xmlPos.print(loc.getSpeed());
+			m_xmlPos.write("</speed>\n");
+			if( lastTrackPoint == null )
+			{
+				lastTrackPoint = loc;
+			}
+			else
+			{
+				m_xmlPos.write("<calculated>\n");
+
+				float bearing = lastTrackPoint.bearingTo(loc);
+				m_xmlPos.write("<bearing>");
+				m_xmlPos.print(bearing);
+				m_xmlPos.write("</bearing>\n");
+
+				m_xmlPos.write("<turn>");
+				m_xmlPos.print(bearing-lastBearing);
+				m_xmlPos.write("</turn>\n");
+
+				float distance =lastTrackPoint.distanceTo(loc);
+				m_xmlPos.write("<distance>");
+				m_xmlPos.print(distance);
+				m_xmlPos.write("</distance>\n");
+
+				long ellapsedTime = loc.getTime()-lastTrackPoint.getTime();
+				m_xmlPos.write("<ellapsedTime>");
+				m_xmlPos.print(ellapsedTime);
+				m_xmlPos.write("</ellapsedTime>\n");
+
+				if(ellapsedTime>0)
+				{
+					m_xmlPos.write("<speed>");
+					m_xmlPos.print(distance/(ellapsedTime/1000));
+					m_xmlPos.write("</speed>\n");
+				}
+				m_xmlPos.write("</calculated>\n");
+
+				lastBearing = bearing;
+				lastTrackPoint = loc;
+			}
+			m_xmlPos.write("</trkpt>\n");
+			m_xmlPos.flush();
+			m_xmlFileOS.flush();
+		}
+		catch( Exception e)
+		{
+			// ignore
+		}
+	}
+	public void createGpxFile() throws IOException
+	{
+		try
+		{
+			closeXMLos();
+		}
+		catch( Exception e )
+		{
+			e.printStackTrace();
+		}
+		if( m_xmlFile == null )
+		{
+			m_xmlFile = getExternalFileName(XML_TRACK_FILE);
+		}
+		if( m_xmlFile != null )
+		{
+			String fnName = getDateLong(m_startTime, false);
+			BufferedReader  reader = new BufferedReader(new FileReader(m_xmlFile));
+			File gpxFile = getExternalFileName( fnName + ".gpx" );
+			FileOutputStream fileos = new FileOutputStream(gpxFile, false);
+			PrintWriter writer = new PrintWriter(fileos);
+
+			writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n" );
+			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"GpxMotorCycle\" version=\"1.1\">\n" );
+			writer.write("<metadata>\n");
+			writer.write("<name>gpxFile"+fnName+"</name>\n");
+			writer.write("<descr>Gpx Created with GpxMotorCycle for Android</descr>\n");
+			writer.write("<author><name>GAK</name></author>\n");
+			writer.write("</metadata>\n");
+
+			writer.write("<trk>\n");
+			writer.write("<name>Track"+fnName+"</name>\n");
+			writer.write("<descr>Track Created with GpxMotoCycle for Android</descr>\n");
+			writer.write("<trkseq>\n");
+			while( true )
+			{
+				String line = reader.readLine();
+				if( line == null )
+				{
+					break;
+				}
+				writer.write(line);
+				writer.write('\n');
+			}
+			writer.write("</trkseq>\n");
+			writer.write("</trk>\n");
+			writer.write("</gpx>\n" );
+
+			writer.flush();
+			writer.close();
+			reader.close();
+			m_xmlFile.delete();
+
+			///  TODO analyze the usage, Thios code is from GpxMotorCycle
+			// reset
+//			m_distance = 0;
+//			m_distanceLocation = null;
+//			m_upMeter = 0;
+//			m_downMeter = 0;
+			m_startTime = 0;
+//			m_minAccel = 0;
+//			m_maxAccel = 0;
+//			m_maxSpeed = 0;
+			setBreakTime(0);
+		}
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		Date Time Format
+	-----------------------------------------------------------------------------------------------
+	 */
+	private SimpleDateFormat	m_sdfIso = null;
+
+	private SimpleDateFormat getIsoDateFormat()
+	{
+		if( m_sdfIso == null )
+		{
+			m_sdfIso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+			m_sdfIso.setTimeZone(TimeZone.getTimeZone("UTC"));
+		}
+		return m_sdfIso;
+	}
+
+	private SimpleDateFormat	m_sdfFname = null;
+	private SimpleDateFormat getFnameDateFormat()
+	{
+		if( m_sdfFname == null )
+		{
+			m_sdfFname = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
+			m_sdfFname.setTimeZone(TimeZone.getTimeZone("UTC"));
+		}
+		return m_sdfFname;
+	}
+
+	private String getDateDate( Date date, boolean useIso )
+	{
+		return (useIso ? getIsoDateFormat() : getFnameDateFormat()).format(date);
+	}
+
+	private String getDateLong( long timeStamp, boolean useIso )
+	{
+		return getDateDate(new Date(timeStamp), useIso);
+	}
+
+	private String getDateLoc( Location loc, boolean useIso )
+	{
+		return getDateLong(loc.getTime(), useIso);
+	}
+
+
+	Location lastTrackPoint = null;
+	float lastBearing=0;
+
+
+
+
+
+
+
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		Basic GPS handling
+	-----------------------------------------------------------------------------------------------
+	 */
+	private CountDownTimer		m_gpsTimer = null;
+	private int					m_gpsInterval = 0;
+	private static final double	MAX_SPEED = 100;
+	private static final double	MAX_ACCEL = 100;
+
+	public abstract void onLocationEnabled();
+	public abstract void onLocationDisabled();
+	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
+	public abstract void onLocationChanged( Location newLocation );
+
+	/**
+	 * Get the corrected altitude
+	 * @param loc the location
+	 * @return the corrected altitude
+	 */
+	// correction valid for Linz/Austria
+	static public int getCorrectedAltidute( Location loc )
+	{
+		return (int)loc.getAltitude()-50;
 	}
 
 	/**
@@ -405,7 +835,7 @@ public abstract class GpsActivity extends MyActivity
 						lockLocationChanged(newLocation, true);
 					}
 				}
-			
+
 				@Override
 				public void onFinish() {
 					m_gpsTimer.start();
@@ -436,144 +866,11 @@ public abstract class GpsActivity extends MyActivity
 	 * Get the GPS interval
 	 * @return the interval in milliseconds
 	 */
-	public int getInterval( )
+	public int getInterval()
 	{
 		return m_gpsInterval;
 	}
 
-	private Boolean				m_logTrack = false;
-	private File				m_file = null;
-	private FileOutputStream	m_fileos = null;
-	private PrintWriter			m_pos = null; 
-
-	private static final String TRACK_FILE = "temp.gak.gps.txt";
-
-	private static File getExternalFileName( String filename )
-	{
-		File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-
-		System.out.println(dir.getPath());
-		if( !dir.exists() )
-		{
-			dir.mkdir();
-		}
-		File file = new File(dir, filename);
-		System.out.println(file.getPath());
-
-		return file;
-	}
-	private void openGPSfileOS() throws IOException
-	{
-		m_file = getExternalFileName(TRACK_FILE);
-		m_file.createNewFile();
-
-		m_fileos = new FileOutputStream(m_file, true);
-		m_pos = new PrintWriter(m_fileos); 
-	}
-	private void closeGPSfileOS() throws IOException
-	{
-		if( m_pos != null )
-		{
-			m_pos.close();
-			m_pos = null;
-		}
-		if( m_fileos != null )
-		{
-			m_fileos.close();
-			m_fileos = null;
-		}
-		
-	}
-	private void appendTrackPoint(Location loc)
-	{
-		if( !m_logTrack || !checkWriteStoragePermission() )
-		{
-			return;
-		}
-		try
-		{
-			if( m_pos == null )
-			{
-				openGPSfileOS();
-			}
-			m_pos.println(locationString(loc, true));
-			m_pos.flush();
-			m_fileos.flush();
-		}
-		catch( Exception e)
-		{
-			// ignore
-		}
-	}
-
-	/**
-	 * Check if the given value is between the given min and max
-	 * @param min the minimum value
-	 * @param cur the current value
-	 * @param max the maximum value
-	 * @return true if the value is between the given min and max, false otherwise
-	 */
-	public static boolean between( double min, double cur, double max )
-	{
-		return ( min <= cur && cur <= max );
-	}
-
-	/**
-	 * Read the track points from the file
-	 */
-	public void readTrackPoints()
-	{
-		if(!checkReadStoragePermission())
-		{
-			return;
-		}
-
-		try
-		{
-			if( m_file == null )
-			{
-				m_file = getExternalFileName(TRACK_FILE);
-			}
-
-			BufferedReader  reader = new BufferedReader(new FileReader(m_file));
-
-			while( true )
-			{
-				String line = reader.readLine();
-				if( line == null )
-				{
-					break;
-				}
-				Location newLocation = locationString(line,true);
-
-				// 14.4426064, 48.3637592,
-				// 14.4481877, 48.3570682
-/*					
-				double lon = newLocation.getLongitude();
-				double lat = newLocation.getLatitude();
-
-				if( between( 14.44, lon, 14.46 )
-				&&  between( 48.350, lat, 48.37 ) )
-				{
-					System.out.println("I'm in");
-				}
-*/
-				if( newLocation != null )
-				{
-					lockLocationChanged(newLocation, false);
-				}
-			}
-
-			reader.close();
-			m_logTrack = true;
-		}
-		catch (IOException e) 
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
 	static private double getEllapsedTime(Location loc1, Location loc2)
 	{
 		return (double)(loc2.getTime()-loc1.getTime())/1000.0;
@@ -600,7 +897,8 @@ public abstract class GpsActivity extends MyActivity
 		)
 		{
 			m_lock.lock();
-			try {
+			try
+			{
 				if( fromGPS )
 				{
 					++m_locationFixCount;
@@ -679,28 +977,101 @@ public abstract class GpsActivity extends MyActivity
 		lockLocationChanged( newLocation, false );
 	}
 
-	@Override
-	public void onDestroy()
-	{
-		if( m_locationManager != null )
-		{
-			// Acquire a reference to the system Location Manager
-			// LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+	/*
+	-----------------------------------------------------------------------------------------------
+		(de)serialization of a location to a string
+	-----------------------------------------------------------------------------------------------
+	 */
+	protected static final String	NAME_KEY = "name";
 
-			m_locationManager.removeUpdates(m_locationListener);
-			//		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
-			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
-			try
-			{
-				closeGPSfileOS();
-			}
-			catch(IOException e)
-			{
-				// ignore
-			}
+	private static String locationString( Location src, boolean raw )
+	{
+		String result = src.getProvider() + '|' +
+				src.getLongitude() + '|' +
+				src.getLatitude() + '|' +
+				src.getAltitude();
+
+		if( raw )
+		{
+			result += '|' + src.getAccuracy() +
+					'|' + src.getTime();
 		}
-		super.onDestroy();
+		return result;
 	}
+
+	/**
+	 * serializes a location to a string
+	 * @param src the location to convert
+	 * @return the string representation of the location
+	 */
+	public static String locationString( @NonNull Location src )
+	{
+		return locationString(src, false);
+	}
+
+	private static Location locationString( String src, boolean raw )
+	{
+		if(src == null)
+		{
+			/*@*/		return null;
+		}
+		String [] elements = src.split("[|]");
+		if(elements.length < 3)
+		{
+			/*@*/		return null;
+		}
+		String provider = elements[0];
+		double longitude = Double.parseDouble(elements[1]);
+		double latitude = Double.parseDouble(elements[2]);
+
+		if( Math.abs(longitude) < 0.01 && Math.abs(latitude) < 0.01)
+		{
+			/*@*/		return null;
+		}
+		Location newLocation = new Location(provider);
+		newLocation.setLongitude(longitude);
+		newLocation.setLatitude(latitude);
+		if (elements.length >= 4)
+		{
+			newLocation.setAltitude(Double.parseDouble(elements[3]));
+		}
+
+		if( raw )
+		{
+			if (elements.length < 6)
+			{
+				/*@*/			return null;
+			}
+			newLocation.setAccuracy((float) Double.parseDouble(elements[4]));
+			newLocation.setTime( Long.parseLong(elements[5]) );
+		}
+		else if (elements.length >= 5)
+		{
+			String name = elements[4];
+			Bundle bundle = new Bundle();
+			bundle.putString(NAME_KEY, name);
+			newLocation.setExtras(bundle);
+		}
+		return newLocation;
+	}
+
+	/**
+	 * Deserializes a location from a string
+	 * @param src the string representation of the location
+	 * @return the location
+	 */
+	public static Location locationString( String src )
+	{
+		return locationString( src, false );
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		Interface to the GpsProcessor
+	-----------------------------------------------------------------------------------------------
+	 */
+
+	private final GpsProcessor	m_processor = new GpsProcessor();
 
 	/**
 	 * Check if a location is available
@@ -817,87 +1188,6 @@ public abstract class GpsActivity extends MyActivity
 	public void setBreakTime( long breakTime )
 	{
 		m_processor.setBreakTime(breakTime);
-	}
-
-	private static String locationString( Location src, boolean raw )
-	{
-		String result = src.getProvider() + '|' + 
-				src.getLongitude() + '|' +
-				src.getLatitude() + '|' +
-				src.getAltitude();
-		
-		if( raw )
-		{
-			result += '|' + src.getAccuracy() +
-					  '|' + src.getTime();
-		}
-		return result;
-	}
-
-	/**
-	 * serializes a location to a string
-	 * @param src the location to convert
-	 * @return the string representation of the location
-	 */
-	public static String locationString( @NonNull Location src )
-	{
-		return locationString(src, false);
-	}
-	
-	private static Location locationString( String src, boolean raw )
-	{
-		if(src == null)
-		{
-/*@*/		return null;
-		}
-		String [] elements = src.split("[|]");
-		if(elements.length < 3)
-		{
-/*@*/		return null;
-		}
-		String provider = elements[0];
-		double longitude = Double.parseDouble(elements[1]);
-		double latitude = Double.parseDouble(elements[2]);
-		
-		if( Math.abs(longitude) < 0.01 && Math.abs(latitude) < 0.01)
-		{
-/*@*/		return null;
-		}
-		Location newLocation = new Location(provider);
-		newLocation.setLongitude(longitude);
-		newLocation.setLatitude(latitude);
-		if (elements.length >= 4)
-		{
-			newLocation.setAltitude(Double.parseDouble(elements[3]));
-		}
-
-		if( raw )
-		{
-			if (elements.length < 6)
-			{
-/*@*/			return null;
-			}
-			newLocation.setAccuracy((float) Double.parseDouble(elements[4]));
-			newLocation.setTime( Long.parseLong(elements[5]) );
-		}
-		else if (elements.length >= 5)
-		{
-			String name = elements[4];
-			Bundle bundle = new Bundle();
-			bundle.putString(NAME_KEY, name);
-			newLocation.setExtras(bundle);
-		}
-		return newLocation;  
-	}
-
-	/**
-	 * Deserializes a location from a string
-	 * @param src the string representation of the location
-	 * @return the location
-	 */
-	public static Location locationString( String src )
-	{
-		return locationString( src, false );
 	}
 
 	// may be this is useful
