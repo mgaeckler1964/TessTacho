@@ -76,8 +76,9 @@ public class MyActivity extends AppCompatActivity
 					finish();
 				}
 			})
-			.setIcon(iconId)
 		;
+		if( iconId != 0 )
+			builder	.setIcon(iconId);
 		if( callback != null )
 		{
 			builder.setNegativeButton("Abbruch", (dialog, id) ->

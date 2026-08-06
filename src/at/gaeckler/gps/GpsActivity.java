@@ -35,9 +35,13 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -121,7 +125,7 @@ public abstract class GpsActivity extends MyActivity
 	/**
 	 * Activate the calibration mode if not yet done
 	 */
-	public void enableCalibartion()
+	public void enableCalibration()
 	{
 		if( !m_calibration )
 		{
@@ -136,7 +140,7 @@ public abstract class GpsActivity extends MyActivity
 	/**
 	 * Deactivate the calibration mode
 	 */
-	public void disableCalibartion()
+	public void disableCalibration()
 	{
 		m_calibration = false;
 	}
@@ -191,8 +195,10 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public boolean requestLocationPermission()
 	{
-		if(checkLocationPermission())	// already granted
+		if(checkLocationPermission())    // already granted
+		{
 			return false;
+		}
 
 		// Suggestion: Request the permission instead of just failing
 		ActivityCompat.requestPermissions(this,
@@ -295,7 +301,14 @@ public abstract class GpsActivity extends MyActivity
 			{
 				// User said NO.
 				// NOW you can call finish() because the app truly cannot work.
-				finish();
+				if(requestCode == LOCATION_PERMISSION_REQUEST_CODE)
+				{
+					showMessage(0, getLocalClassName(), "Fine Location Permission Missing!", true, null);
+				}
+				else
+				{
+					finish();
+				}
 			}
 		}
 	}
@@ -320,8 +333,10 @@ public abstract class GpsActivity extends MyActivity
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
-		if( requestLocationPermission() )
+		if(requestLocationPermission())
+		{
 			return;
+		}
 
 		if( savedInstanceState != null ) {
 			m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
@@ -428,6 +443,63 @@ public abstract class GpsActivity extends MyActivity
 		super.onDestroy();
 	}
 
+	private InputStream openInputStream(String filename) throws IOException
+	{
+	/*
+		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
+
+		if (uriString != null)
+		{
+			// MODERNER WEG (Vorbereitung)
+			Uri treeUri = Uri.parse(uriString);
+			androidx.documentfile.provider.DocumentFile root = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+			androidx.documentfile.provider.DocumentFile file = root.findFile(filename);
+
+			if (file != null && file.exists())
+			{
+				return getContentResolver().openInputStream(file.getUri());
+			}
+			else
+			{
+				throw new FileNotFoundException("Datei nicht gefunden: " + filename);
+			}
+		}
+		else
+	 */
+		{
+			// ALTER WEG (Aktueller Stand)
+			File file = getExternalFileName(filename);
+			return new FileInputStream(file);
+		}
+	}
+
+	private OutputStream openOutputStream(String filename, boolean append) throws IOException
+	{
+	/*
+		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
+
+		if (uriString != null)
+		{
+			// MODERNER WEG (Vorbereitung)
+			Uri treeUri = Uri.parse(uriString);
+			androidx.documentfile.provider.DocumentFile root = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+			androidx.documentfile.provider.DocumentFile file = root.findFile(filename);
+			if (file == null) {
+				String mime = filename.endsWith(".xml") ? "application/gpx+xml" : "text/plain";
+				file = root.createFile(mime, filename);
+			}
+			// "wa" steht für Write-Append
+			return getContentResolver().openOutputStream(file.getUri(), append ? "wa" : "w");
+		}
+		else
+	 */
+		{
+			// ALTER WEG (Aktueller Stand)
+			File file = getExternalFileName(filename);
+			return new FileOutputStream(file, append);
+		}
+	}
+
 	/*
 	-----------------------------------------------------------------------------------------------
 		RAW file
@@ -435,7 +507,6 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	// used for debugging
 	private Boolean				m_logRaw = false;
-	private File				m_rawFile = null;
 	private FileOutputStream	m_rawFileOS = null;
 	private PrintWriter			m_rawPos = null;
 	private static final String RAW_TRACK_FILE = ".temp.raw.gps.txt";
@@ -461,10 +532,7 @@ public abstract class GpsActivity extends MyActivity
 
 	private void openRAWfileOS() throws IOException
 	{
-		m_rawFile = getExternalFileName(getRawTrackFileName());
-		m_rawFile.createNewFile();
-
-		m_rawFileOS = new FileOutputStream(m_rawFile, true);
+		m_rawFileOS = (FileOutputStream) openOutputStream(getRawTrackFileName(), true);
 		m_rawPos = new PrintWriter(m_rawFileOS);
 	}
 	private void closeRAWfileOS() throws IOException
@@ -515,12 +583,8 @@ public abstract class GpsActivity extends MyActivity
 
 		try
 		{
-			if( m_rawFile == null )
-			{
-				m_rawFile = getExternalFileName(getRawTrackFileName());
-			}
-
-			BufferedReader  reader = new BufferedReader(new FileReader(m_rawFile));
+			InputStream is = openInputStream(getRawTrackFileName());
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 
 			while( true )
 			{
@@ -566,7 +630,6 @@ public abstract class GpsActivity extends MyActivity
 	-----------------------------------------------------------------------------------------------
 	 */
 	private static final String XML_TRACK_FILE = ".temp.gps.xml";
-	private File				m_xmlFile = null;
 	private FileOutputStream	m_xmlFileOS = null;
 	private PrintWriter			m_xmlPos = null;
 
@@ -579,10 +642,7 @@ public abstract class GpsActivity extends MyActivity
 	}
 	private void openXMLos() throws IOException
 	{
-		m_xmlFile = getExternalFileName( getXmlTrackFileName() );
-		m_xmlFile.createNewFile();
-
-		m_xmlFileOS = new FileOutputStream(m_xmlFile, true);
+		m_xmlFileOS = (FileOutputStream) openOutputStream(getXmlTrackFileName(), true);
 		m_xmlPos = new PrintWriter(m_xmlFileOS);
 	}
 	public void closeXMLos() throws IOException
@@ -685,29 +745,31 @@ public abstract class GpsActivity extends MyActivity
 		{
 			e.printStackTrace();
 		}
-		if( m_xmlFile == null )
-		{
-			m_xmlFile = getExternalFileName(getXmlTrackFileName());
-		}
-		if( m_xmlFile != null )
+		// we still need the XML file here, because we want to delete it now
+		// when we have migrated reading and writing, we also must migrate the deletion
+		File xmlFile = getExternalFileName(getXmlTrackFileName());
+
+		if( xmlFile.exists() )
 		{
 			String fnName = getDateLong(m_startTime, false);
-			BufferedReader  reader = new BufferedReader(new FileReader(m_xmlFile));
-			File gpxFile = getExternalFileName( fnName + ".gpx" );
-			FileOutputStream fileos = new FileOutputStream(gpxFile, false);
-			PrintWriter writer = new PrintWriter(fileos);
+			String gpxFileName = fnName + ".gpx";
+			InputStream is = openInputStream(getXmlTrackFileName());
+			BufferedReader  reader = new BufferedReader(new InputStreamReader(is));
+
+			OutputStream os = openOutputStream(gpxFileName, false);
+			PrintWriter writer = new PrintWriter(os);
 
 			writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n" );
-			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"GpxMotorCycle\" version=\"1.1\">\n" );
+			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"" + getLocalClassName() + "\" version=\"1.1\">\n" );
 			writer.write("<metadata>\n");
 			writer.write("<name>gpxFile"+fnName+"</name>\n");
-			writer.write("<descr>Gpx Created with GpxMotorCycle for Android</descr>\n");
+			writer.write("<descr>Gpx Created with " + getLocalClassName() + " for Android</descr>\n");
 			writer.write("<author><name>GAK</name></author>\n");
 			writer.write("</metadata>\n");
 
 			writer.write("<trk>\n");
 			writer.write("<name>Track"+fnName+"</name>\n");
-			writer.write("<descr>Track Created with GpxMotoCycle for Android</descr>\n");
+			writer.write("<descr>Track Created with " + getLocalClassName() + " for Android</descr>\n");
 			writer.write("<trkseq>\n");
 			while( true )
 			{
@@ -716,8 +778,7 @@ public abstract class GpsActivity extends MyActivity
 				{
 					break;
 				}
-				writer.write(line);
-				writer.write('\n');
+				writer.println(line);
 			}
 			writer.write("</trkseq>\n");
 			writer.write("</trk>\n");
@@ -726,9 +787,9 @@ public abstract class GpsActivity extends MyActivity
 			writer.flush();
 			writer.close();
 			reader.close();
-			m_xmlFile.delete();
+			xmlFile.delete();
 
-			///  TODO analyze the usage, Thios code is from GpxMotorCycle
+			///  TODO analyze the usage, This code is from GpxMotorCycle
 			// reset
 //			m_distance = 0;
 //			m_distanceLocation = null;
