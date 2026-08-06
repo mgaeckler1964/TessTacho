@@ -37,7 +37,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -454,6 +453,7 @@ public abstract class GpsActivity extends MyActivity
 				? Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
 				: getExternalFilesDir(null);
 
+		assert dir != null;
 		System.out.println(dir.getPath());
 		if( !dir.exists() )
 		{
@@ -475,36 +475,37 @@ public abstract class GpsActivity extends MyActivity
 	 * @param pub if true, the file is in the public directory, otherwise in the private directory
 	 * @param filename the filename to use
 	 * @return the input stream
-	 * @throws IOException
+	 * @throws IOException in case of an IO error
 	 */
 	public InputStream openInputStream(boolean pub, String filename) throws IOException
 	{
-	/*
-		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
+		/*
+		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString(gpx_folder_uri, null);
 
 		if (uriString != null)
 		{
-			// MODERNER WEG (Vorbereitung)
-			Uri treeUri = Uri.parse(uriString);
-			androidx.documentfile.provider.DocumentFile root = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
-			androidx.documentfile.provider.DocumentFile file = root.findFile(filename);
+			try
+			{
+				// MODERNER WEG (Vorbereitung)
+				Uri treeUri = Uri.parse(uriString);
+				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
+				DocumentFile file = root.findFile(filename);
 
-			if (file != null && file.exists())
-			{
-				return getContentResolver().openInputStream(file.getUri());
+				if (file != null && file.exists())
+				{
+					return getContentResolver().openInputStream(file.getUri());
+				}
 			}
-			else
+			catch (Exception e)
 			{
-				throw new FileNotFoundException("Datei nicht gefunden: " + filename);
+				Log.e("GPS", "SAF failed, trying legacy", e);
 			}
 		}
-		else
-	 */
-		{
-			// ALTER WEG (Aktueller Stand)
-			File file = getExternalFileName(pub, filename);
-			return new FileInputStream(file);
-		}
+		*/
+
+		// fall back for old androids
+		File file = getExternalFileName(pub, filename);
+		return new FileInputStream(file);
 	}
 
 	/**
@@ -524,41 +525,47 @@ public abstract class GpsActivity extends MyActivity
 	 * @param filename the filename to use
 	 * @param append if true, the file is opened in append mode, otherwise in write mode
 	 * @return the output stream
-	 * @throws IOException
+	 * @throws IOException in case of an IO error
 	 */
 	public OutputStream openOutputStream(boolean pub, String filename, boolean append) throws IOException
 	{
-	/*
+		/*
 		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
 
 		if (uriString != null)
 		{
-			// MODERNER WEG (Vorbereitung)
-			Uri treeUri = Uri.parse(uriString);
-			androidx.documentfile.provider.DocumentFile root = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
-			androidx.documentfile.provider.DocumentFile file = root.findFile(filename);
-			if (file == null) {
-				String mime = filename.endsWith(".xml") ? "application/gpx+xml" : "text/plain";
-				file = root.createFile(mime, filename);
+			try
+			{
+				Uri treeUri = Uri.parse(uriString);
+				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
+				DocumentFile file = root.findFile(filename);
+				if (file == null) {
+					String mime = filename.endsWith(".xml") ? "application/gpx+xml" : "text/plain";
+					file = root.createFile(mime, filename);
+				}
+				if( file != null && file.exists())
+				{
+					// "wa" steht für Write-Append
+					return getContentResolver().openOutputStream(file.getUri(), append ? "wa" : "w");
+				}
 			}
-			// "wa" steht für Write-Append
-			return getContentResolver().openOutputStream(file.getUri(), append ? "wa" : "w");
+			catch (java.lang.Exception e)
+			{
+				Log.e("GPS", "SAF write failed", e);
+			}
 		}
-		else
-	 */
-		{
-			// ALTER WEG (Aktueller Stand)
-			File file = getExternalFileName(filename);
-			return new FileOutputStream(file, append);
-		}
-	}
+		*/
 
+		// fall back for old androids
+		File file = getExternalFileName(filename);
+		return new FileOutputStream(file, append);
+	}
 	/**
 	 * Open a file for writing in a public directory
 	 * @param filename the filename to use
 	 * @param append if true, the file is opened in append mode, otherwise in write mode
 	 * @return the output stream
-	 * @throws IOException
+	 * @throws IOException in case of an IO error
 	 */
 	public OutputStream openOutputStream(String filename, boolean append) throws IOException
 	{
@@ -1115,7 +1122,7 @@ public abstract class GpsActivity extends MyActivity
 		if( raw )
 		{
 			result += '|' + src.getAccuracy() +
-					'|' + src.getTime();
+				'|' + src.getTime();
 		}
 		return result;
 	}
