@@ -443,7 +443,41 @@ public abstract class GpsActivity extends MyActivity
 		super.onDestroy();
 	}
 
-	private InputStream openInputStream(String filename) throws IOException
+	/*
+	-----------------------------------------------------------------------------------------------
+		Any file
+	-----------------------------------------------------------------------------------------------
+	 */
+	private  File getExternalFileName( boolean pub, String fileName )
+	{
+		File dir = pub
+				? Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+				: getExternalFilesDir(null);
+
+		System.out.println(dir.getPath());
+		if( !dir.exists() )
+		{
+			dir.mkdir();
+		}
+		File file = new File(dir, fileName);	// pub ? s_filenameExternalPublic : s_filenameExternalPrivate
+		System.out.println(file.getPath());
+
+		return file;
+	}
+
+	private File getExternalFileName( String fileName )
+	{
+		return getExternalFileName( true, fileName );
+	}
+
+	/**
+	 * Open a file for reading
+	 * @param pub if true, the file is in the public directory, otherwise in the private directory
+	 * @param filename the filename to use
+	 * @return the input stream
+	 * @throws IOException
+	 */
+	public InputStream openInputStream(boolean pub, String filename) throws IOException
 	{
 	/*
 		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
@@ -468,12 +502,31 @@ public abstract class GpsActivity extends MyActivity
 	 */
 		{
 			// ALTER WEG (Aktueller Stand)
-			File file = getExternalFileName(filename);
+			File file = getExternalFileName(pub, filename);
 			return new FileInputStream(file);
 		}
 	}
 
-	private OutputStream openOutputStream(String filename, boolean append) throws IOException
+	/**
+	 * Open a file for reading in a public directory
+	 * @param filename the filename to read
+	 * @return the input stream
+	 * @throws IOException in case of an IO error
+	 */
+	public InputStream openInputStream( String filename) throws IOException
+	{
+		return openInputStream(true, filename);
+	}
+
+	/**
+	 * Open a file for writing
+	 * @param pub if true, the file is in the public directory, otherwise in the private directory
+	 * @param filename the filename to use
+	 * @param append if true, the file is opened in append mode, otherwise in write mode
+	 * @return the output stream
+	 * @throws IOException
+	 */
+	public OutputStream openOutputStream(boolean pub, String filename, boolean append) throws IOException
 	{
 	/*
 		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
@@ -500,6 +553,18 @@ public abstract class GpsActivity extends MyActivity
 		}
 	}
 
+	/**
+	 * Open a file for writing in a public directory
+	 * @param filename the filename to use
+	 * @param append if true, the file is opened in append mode, otherwise in write mode
+	 * @return the output stream
+	 * @throws IOException
+	 */
+	public OutputStream openOutputStream(String filename, boolean append) throws IOException
+	{
+		return openOutputStream(true, filename, append);
+	}
+
 	/*
 	-----------------------------------------------------------------------------------------------
 		RAW file
@@ -514,20 +579,6 @@ public abstract class GpsActivity extends MyActivity
 	private String getRawTrackFileName()
 	{
 		return getLocalClassName() + RAW_TRACK_FILE;
-	}
-	private static File getExternalFileName( String filename )
-	{
-		File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-
-		System.out.println(dir.getPath());
-		if( !dir.exists() )
-		{
-			dir.mkdir();
-		}
-		File file = new File(dir, filename);
-		System.out.println(file.getPath());
-
-		return file;
 	}
 
 	private void openRAWfileOS() throws IOException
