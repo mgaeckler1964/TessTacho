@@ -34,6 +34,7 @@ import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -62,11 +64,13 @@ import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
 import android.provider.Settings;
+import android.util.Log;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.documentfile.provider.DocumentFile;
 
 import at.gaeckler.MyActivity;
 
@@ -207,16 +211,91 @@ public abstract class GpsActivity extends MyActivity
 		return true;
 	}
 
+	/**
+	 * Prüft, ob für die gespeicherte SAF-Uri noch Rechte vorliegen.
+	 */
+	private  boolean checkSafFolderPermissions( boolean writePermission )
+	{
+		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
+		if (uriString == null)
+			return false;
+		Uri treeUri = Uri.parse(uriString);
+		if (treeUri == null)
+			return false;
+
+		int modeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+		if( writePermission )
+			modeFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+
+		try
+		{
+			// Diese Methode wirft keine Exception, wenn man keine Rechte hat,
+			// aber man kann damit prüfen, ob der Zugriff noch valide ist.
+			getContentResolver().takePersistableUriPermission(treeUri, modeFlags);
+		}
+		catch (SecurityException e)
+		{
+			return false;
+		}
+
+		// 2. Prüfung via DocumentFile (ist der Ordner noch vorhanden?)
+		DocumentFile folder = DocumentFile.fromTreeUri(this, treeUri);
+		return folder != null && folder.exists()
+				&& folder.canRead()
+				&& (!writePermission || folder.canWrite());
+	}
+
+	/**
+	 * Check if the device is running on a device with an external storage manager
+	 * @return true if the device is running on a device with an external storage manager, false otherwise
+	 */
+	public boolean checkIsExternalStorageManager()
+	{
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() )
+			return true;
+		return false;
+	}
+
+	/**
+	 * Check if the storage read permission is granted
+	 * @return true if the storage read permission is granted, false otherwise
+	 */
 	public boolean checkReadStoragePermission()
 	{
-		return ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+		if( checkIsExternalStorageManager() )
+			return true;
+		return checkSafFolderPermissions(false) || ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
 	}
 
+	/**
+	 * Check if the storage write permission is granted
+	 * @return true if the storage write permission is granted, false otherwise
+	 */
 	public boolean checkWriteStoragePermission()
 	{
-		return ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+		if( checkIsExternalStorageManager() )
+			return true;
+		return checkSafFolderPermissions(true) || ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
 	}
 
+	public void displayStorageManagePermission()
+	{
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+		{
+			try
+			{
+				Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+				intent.addCategory("android.intent.category.DEFAULT");
+				intent.setData(Uri.parse(String.format("package:%s", getPackageName())));
+				startActivity(intent);
+			} catch(Exception e)
+			{
+				Intent intent = new Intent();
+				intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+				startActivity(intent);
+			}
+		}
+	}
 
 	/**
 	 * The request code for the storage permission
@@ -224,7 +303,7 @@ public abstract class GpsActivity extends MyActivity
 	 * rcDenied: permission denied (not requested)
 	 * rcRequested: permission denied (requested)
 	 */
-	public enum RequestCode { rcOK, rcDenied, rcRequested }
+	public enum RequestCode { OK, DENIED, REQUESTED }
 
 	/**
 	 * Request the storage permission
@@ -236,23 +315,13 @@ public abstract class GpsActivity extends MyActivity
 	{
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
 		{
-			if (!Environment.isExternalStorageManager())
+			if( hasStorageFolder() )
+				return RequestCode.OK;
+
+			if( !Environment.isExternalStorageManager() )
 			{
-				try
-				{
-					Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-					intent.addCategory("android.intent.category.DEFAULT");
-					intent.setData(Uri.parse(String.format("package:%s", getPackageName())));
-					startActivity(intent);
-					return RequestCode.rcRequested;
-				}
-				catch (Exception e)
-				{
-					Intent intent = new Intent();
-					intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-					startActivity(intent);
-					return RequestCode.rcRequested;
-				}
+				displayStorageManagePermission();
+				return RequestCode.REQUESTED;
 			}
 		}
 		else if(
@@ -268,19 +337,19 @@ public abstract class GpsActivity extends MyActivity
 					new String[]{READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE},
 					STORAGE_PERMISSION_REQUEST_CODE
 			);
-			return RequestCode.rcDenied;
+			return RequestCode.DENIED;
 		}
 		else if( checkCallingOrSelfPermission("android.permission.READ_EXTERNAL_STORAGE") == PackageManager.PERMISSION_DENIED )
 		{
 			showMessage(iconId, title, "Read Permission Missing", true, null);
-			return RequestCode.rcDenied;
+			return RequestCode.DENIED;
 		}
 		else if( checkCallingOrSelfPermission("android.permission.WRITE_EXTERNAL_STORAGE") == PackageManager.PERMISSION_DENIED )
 		{
 			showMessage( iconId, title, "Write Premission Missing", true, null);
-			return RequestCode.rcDenied;
+			return RequestCode.DENIED;
 		}
-		return RequestCode.rcOK;
+		return RequestCode.OK;
 	}
 
 	@Override
@@ -444,6 +513,88 @@ public abstract class GpsActivity extends MyActivity
 
 	/*
 	-----------------------------------------------------------------------------------------------
+		Storage Access Framework (SAF)
+	-----------------------------------------------------------------------------------------------
+	 */
+	private static final int REQUEST_CODE_OPEN_DIRECTORY = 1234;
+	private static final String CONFIG_FILE = "prefs";
+	private static final String CONFIG_KEY = "storage_folder_uri";
+
+	/**
+	 * Select the storage folder
+	 */
+	@SuppressLint("NewApi")
+	@SuppressWarnings("deprecation")
+	public void selectStorageFolder()
+	{
+		Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+		// Erlaubt dauerhaften Zugriff
+		intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+				| Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+				| Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+		startActivityForResult(intent, REQUEST_CODE_OPEN_DIRECTORY);
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+		super.onActivityResult(requestCode, resultCode, data);
+
+		if (requestCode == REQUEST_CODE_OPEN_DIRECTORY && resultCode == RESULT_OK)
+		{
+			if (data != null && data.getData() != null)
+			{
+				Uri treeUri = data.getData();
+
+				// WICHTIG: Die Berechtigung dauerhaft beim System registrieren ("Persistable Permission")
+				final int takeFlags = data.getFlags()
+						& (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+				try
+				{
+					getContentResolver().takePersistableUriPermission(treeUri, takeFlags);
+
+					// URI in SharedPreferences speichern
+					getSharedPreferences(CONFIG_FILE, MODE_PRIVATE)
+							.edit()
+							.putString(CONFIG_KEY, treeUri.toString())
+							.apply();
+
+					// Aktivität neu starten oder Initialisierung fortsetzen
+					recreate();
+				}
+				catch (SecurityException e)
+				{
+					Log.e("GPS", "Failed to take persistable permission", e);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Select the public document folder as storage folder
+	 */
+	public void selectPublicFolder()
+	{
+		getSharedPreferences(CONFIG_FILE, MODE_PRIVATE)
+				.edit()
+				.remove(CONFIG_KEY)
+				.apply();
+	}
+
+	/**
+	 * Check if a storage folder is selected
+	 * @return true if a storage folder is selected, false otherwise
+	 */
+	public boolean hasStorageFolder()
+	{
+		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
+
+		return uriString != null;
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
 		Any file
 	-----------------------------------------------------------------------------------------------
 	 */
@@ -479,8 +630,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public InputStream openInputStream(boolean pub, String filename) throws IOException
 	{
-		/*
-		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString(gpx_folder_uri, null);
+		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
 
 		if (uriString != null)
 		{
@@ -501,7 +651,6 @@ public abstract class GpsActivity extends MyActivity
 				Log.e("GPS", "SAF failed, trying legacy", e);
 			}
 		}
-		*/
 
 		// fall back for old androids
 		File file = getExternalFileName(pub, filename);
@@ -529,9 +678,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public OutputStream openOutputStream(boolean pub, String filename, boolean append) throws IOException
 	{
-		/*
-		String uriString = getSharedPreferences("prefs", MODE_PRIVATE).getString("gpx_folder_uri", null);
-
+		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
 		if (uriString != null)
 		{
 			try
@@ -539,8 +686,9 @@ public abstract class GpsActivity extends MyActivity
 				Uri treeUri = Uri.parse(uriString);
 				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
 				DocumentFile file = root.findFile(filename);
-				if (file == null) {
-					String mime = filename.endsWith(".xml") ? "application/gpx+xml" : "text/plain";
+				if (file == null)
+				{
+					String mime = filename.endsWith(".gpx") ? "application/gpx+xml" : "text/plain";
 					file = root.createFile(mime, filename);
 				}
 				if( file != null && file.exists())
@@ -554,7 +702,6 @@ public abstract class GpsActivity extends MyActivity
 				Log.e("GPS", "SAF write failed", e);
 			}
 		}
-		*/
 
 		// fall back for old androids
 		File file = getExternalFileName(filename);
@@ -579,7 +726,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	// used for debugging
 	private Boolean				m_logRaw = false;
-	private FileOutputStream	m_rawFileOS = null;
+	private OutputStream		m_rawFileOS = null;
 	private PrintWriter			m_rawPos = null;
 	private static final String RAW_TRACK_FILE = ".temp.raw.gps.txt";
 
@@ -590,8 +737,10 @@ public abstract class GpsActivity extends MyActivity
 
 	private void openRAWfileOS() throws IOException
 	{
-		m_rawFileOS = (FileOutputStream) openOutputStream(getRawTrackFileName(), true);
-		m_rawPos = new PrintWriter(m_rawFileOS);
+		m_rawFileOS = openOutputStream(getRawTrackFileName(), true);
+		m_rawPos = new PrintWriter(
+			new BufferedWriter(new OutputStreamWriter(m_rawFileOS))
+		);
 	}
 	private void closeRAWfileOS() throws IOException
 	{
@@ -620,8 +769,6 @@ public abstract class GpsActivity extends MyActivity
 				openRAWfileOS();
 			}
 			m_rawPos.println(locationString(loc, true));
-			m_rawPos.flush();
-			m_rawFileOS.flush();
 		}
 		catch( Exception e)
 		{
@@ -688,11 +835,11 @@ public abstract class GpsActivity extends MyActivity
 	-----------------------------------------------------------------------------------------------
 	 */
 	private static final String XML_TRACK_FILE = ".temp.gps.xml";
-	private FileOutputStream	m_xmlFileOS = null;
-	private PrintWriter			m_xmlPos = null;
+	private OutputStream	m_xmlFileOS = null;
+	private PrintWriter		m_xmlPos = null;
 
-	private Location			m_lastTrackPoint = null;
-	float						m_lastBearing=0;
+	private Location		m_lastTrackPoint = null;
+	float					m_lastBearing=0;
 
 	private String getXmlTrackFileName()
 	{
@@ -700,8 +847,10 @@ public abstract class GpsActivity extends MyActivity
 	}
 	private void openXMLos() throws IOException
 	{
-		m_xmlFileOS = (FileOutputStream) openOutputStream(getXmlTrackFileName(), true);
-		m_xmlPos = new PrintWriter(m_xmlFileOS);
+		m_xmlFileOS = openOutputStream(getXmlTrackFileName(), true);
+		m_xmlPos = new PrintWriter(
+			new BufferedWriter(new OutputStreamWriter(m_xmlFileOS))
+		);
 	}
 	public void closeXMLos() throws IOException
 	{
@@ -785,8 +934,6 @@ public abstract class GpsActivity extends MyActivity
 				m_lastTrackPoint = loc;
 			}
 			m_xmlPos.write("</trkpt>\n");
-			m_xmlPos.flush();
-			m_xmlFileOS.flush();
 		}
 		catch( Exception e)
 		{
@@ -806,7 +953,6 @@ public abstract class GpsActivity extends MyActivity
 		// we still need the XML file here, because we want to delete it now
 		// when we have migrated reading and writing, we also must migrate the deletion
 		File xmlFile = getExternalFileName(getXmlTrackFileName());
-
 		if( xmlFile.exists() )
 		{
 			String fnName = getDateLong(m_startTime, false);
@@ -842,7 +988,6 @@ public abstract class GpsActivity extends MyActivity
 			writer.write("</trk>\n");
 			writer.write("</gpx>\n" );
 
-			writer.flush();
 			writer.close();
 			reader.close();
 			xmlFile.delete();
