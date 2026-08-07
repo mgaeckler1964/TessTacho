@@ -688,7 +688,17 @@ public abstract class GpsActivity extends MyActivity
 				DocumentFile file = root.findFile(filename);
 				if (file == null)
 				{
-					String mime = filename.endsWith(".gpx") ? "application/gpx+xml" : "text/plain";
+					String mime;
+
+					if( filename.endsWith(".gpx") )
+						mime = "application/gpx+xml";
+					else if( filename.endsWith(".xml") )
+						mime = "text/xml";
+					else if( filename.endsWith(".txt") )
+						mime = "text/plain";
+					else
+						mime = "application/octet-stream";
+
 					file = root.createFile(mime, filename);
 				}
 				if( file != null && file.exists())
@@ -717,6 +727,40 @@ public abstract class GpsActivity extends MyActivity
 	public OutputStream openOutputStream(String filename, boolean append) throws IOException
 	{
 		return openOutputStream(true, filename, append);
+	}
+
+	private void deleteLocalFile(String filename)
+	{
+		// Strategy 1: Standard File API (Works for private internal storage or legacy)
+		File file = getExternalFileName(filename);
+		if( file != null && file.exists() )
+		{
+			if( file.delete() )
+				return;
+		}
+
+		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
+
+		if( uriString != null )
+		{
+			try
+			{
+				Uri treeUri = Uri.parse(uriString);
+				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
+				DocumentFile dFile = root.findFile(filename);
+
+				if( dFile != null && dFile.exists() )
+				{
+					if( dFile.delete() )
+					{
+						Log.d("GPS", "File deleted via SAF: " + filename);
+					}				}
+			}
+			catch (Exception e)
+			{
+				Log.e("GPS", "SAF failed, trying legacy", e);
+			}
+		}
 	}
 
 	/*
@@ -834,7 +878,7 @@ public abstract class GpsActivity extends MyActivity
 		XML file
 	-----------------------------------------------------------------------------------------------
 	 */
-	private static final String XML_TRACK_FILE = ".temp.gps.xml";
+	private static final String XML_TRACK_FILE = ".temp.gpx";
 	private OutputStream	m_xmlFileOS = null;
 	private PrintWriter		m_xmlPos = null;
 
@@ -940,6 +984,7 @@ public abstract class GpsActivity extends MyActivity
 			// ignore
 		}
 	}
+
 	public void createGpxFile() throws IOException
 	{
 		try
@@ -948,37 +993,36 @@ public abstract class GpsActivity extends MyActivity
 		}
 		catch( Exception e )
 		{
-			e.printStackTrace();
+			// ignore
 		}
-		// we still need the XML file here, because we want to delete it now
-		// when we have migrated reading and writing, we also must migrate the deletion
-		File xmlFile = getExternalFileName(getXmlTrackFileName());
-		if( xmlFile.exists() )
-		{
-			String fnName = getDateLong(m_startTime, false);
-			String gpxFileName = fnName + ".gpx";
-			InputStream is = openInputStream(getXmlTrackFileName());
-			BufferedReader  reader = new BufferedReader(new InputStreamReader(is));
 
+		String xmlTrackName = getXmlTrackFileName();
+		String fnName = getDateLong(m_startTime, false);
+		String gpxFileName = fnName + ".gpx";
+		try(
+			InputStream is = openInputStream(xmlTrackName);
+			BufferedReader  reader = new BufferedReader(new InputStreamReader(is));
+		)
+		{
 			OutputStream os = openOutputStream(gpxFileName, false);
 			PrintWriter writer = new PrintWriter(os);
 
-			writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n" );
-			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"" + getLocalClassName() + "\" version=\"1.1\">\n" );
+			writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n");
+			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"" + getLocalClassName() + "\" version=\"1.1\">\n");
 			writer.write("<metadata>\n");
-			writer.write("<name>gpxFile"+fnName+"</name>\n");
+			writer.write("<name>gpxFile" + fnName + "</name>\n");
 			writer.write("<descr>Gpx Created with " + getLocalClassName() + " for Android</descr>\n");
 			writer.write("<author><name>GAK</name></author>\n");
 			writer.write("</metadata>\n");
 
 			writer.write("<trk>\n");
-			writer.write("<name>Track"+fnName+"</name>\n");
+			writer.write("<name>Track" + fnName + "</name>\n");
 			writer.write("<descr>Track Created with " + getLocalClassName() + " for Android</descr>\n");
 			writer.write("<trkseq>\n");
-			while( true )
+			while(true)
 			{
 				String line = reader.readLine();
-				if( line == null )
+				if(line == null)
 				{
 					break;
 				}
@@ -986,11 +1030,12 @@ public abstract class GpsActivity extends MyActivity
 			}
 			writer.write("</trkseq>\n");
 			writer.write("</trk>\n");
-			writer.write("</gpx>\n" );
+			writer.write("</gpx>\n");
 
 			writer.close();
 			reader.close();
-			xmlFile.delete();
+
+			deleteLocalFile(xmlTrackName);
 
 			///  TODO analyze the usage, This code is from GpxMotorCycle
 			// reset
