@@ -606,7 +606,7 @@ public abstract class GpsActivity extends MyActivity
 		{
 			dir.mkdir();
 		}
-		File file = new File(dir, fileName);	// pub ? s_filenameExternalPublic : s_filenameExternalPrivate
+		File file = new File(dir, fileName);
 
 		return file;
 	}
@@ -921,59 +921,64 @@ public abstract class GpsActivity extends MyActivity
 			m_xmlPos.write("\" lat=\"");
 			m_xmlPos.print(loc.getLatitude());
 			m_xmlPos.write("\">\n");
-			m_xmlPos.write("<ele>");
+			m_xmlPos.write("\t<ele>");
 			m_xmlPos.print(getCorrectedAltitude(loc));
 			m_xmlPos.write("</ele>\n");
-			m_xmlPos.write("<geoidheight>");
+			m_xmlPos.write("\t<geoidheight>");
 			m_xmlPos.print(loc.getAltitude());
 			m_xmlPos.write("</geoidheight>\n");
-			m_xmlPos.write("<time>");
+			m_xmlPos.write("\t<time>");
 			m_xmlPos.print(getDateLoc(loc, true));
 			m_xmlPos.write("</time>\n");
-			m_xmlPos.write("<utcStamp>");
+
+			m_xmlPos.write("\t<extensions>\n");
+
+			m_xmlPos.write("\t\t<gak:utcStamp>");
 			m_xmlPos.print(loc.getTime());
-			m_xmlPos.write("</utcStamp>\n");
-			m_xmlPos.write("<speed>");
+			m_xmlPos.write("</gak:utcStamp>\n");
+			m_xmlPos.write("\t\t<gak:speed>");
 			m_xmlPos.print(loc.getSpeed());
-			m_xmlPos.write("</speed>\n");
+			m_xmlPos.write("</gak:speed>\n");
 			if( m_lastTrackPoint == null )
 			{
 				m_lastTrackPoint = loc;
 			}
 			else
 			{
-				m_xmlPos.write("<calculated>\n");
+				m_xmlPos.write("\t\t<gak:calculated>\n");
 
 				float bearing = m_lastTrackPoint.bearingTo(loc);
-				m_xmlPos.write("<bearing>");
+				m_xmlPos.write("\t\t\t<gak:bearing>");
 				m_xmlPos.print(bearing);
-				m_xmlPos.write("</bearing>\n");
+				m_xmlPos.write("</gak:bearing>\n");
 
-				m_xmlPos.write("<turn>");
+				m_xmlPos.write("\t\t\t<gak:turn>");
 				m_xmlPos.print(bearing-m_lastBearing);
-				m_xmlPos.write("</turn>\n");
+				m_xmlPos.write("</gak:turn>\n");
 
 				float distance = m_lastTrackPoint.distanceTo(loc);
-				m_xmlPos.write("<distance>");
+				m_xmlPos.write("\t\t\t<gak:distance>");
 				m_xmlPos.print(distance);
-				m_xmlPos.write("</distance>\n");
+				m_xmlPos.write("</gak:distance>\n");
 
-				long ellapsedTime = loc.getTime()-m_lastTrackPoint.getTime();
-				m_xmlPos.write("<ellapsedTime>");
-				m_xmlPos.print(ellapsedTime);
-				m_xmlPos.write("</ellapsedTime>\n");
+				long elapsedTime = loc.getTime()-m_lastTrackPoint.getTime();
+				m_xmlPos.write("\t\t\t<gak:elapsedTime>");
+				m_xmlPos.print(elapsedTime);
+				m_xmlPos.write("</gak:elapsedTime>\n");
 
-				if(ellapsedTime>0)
+				if(elapsedTime>0)
 				{
-					m_xmlPos.write("<speed>");
-					m_xmlPos.print(distance/(ellapsedTime/1000.0));
-					m_xmlPos.write("</speed>\n");
+					m_xmlPos.write("\t\t\t<gak:speed>");
+					m_xmlPos.print(distance/(elapsedTime/1000.0));
+					m_xmlPos.write("</gak:speed>\n");
 				}
-				m_xmlPos.write("</calculated>\n");
+				m_xmlPos.write("\t\t</gak:calculated>\n");
+
 
 				m_lastBearing = bearing;
 				m_lastTrackPoint = loc;
 			}
+			m_xmlPos.write("\t</extensions>\n");
 			m_xmlPos.write("</trkpt>\n");
 		}
 		catch( Exception e)
@@ -1007,19 +1012,19 @@ public abstract class GpsActivity extends MyActivity
 		{
 			OutputStream os = openOutputStream(gpxFileName, false);
 			PrintWriter writer = new PrintWriter(os);
-
+			String appName = getString(getApplicationInfo().labelRes);
 			writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n");
-			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"" + getLocalClassName() + "\" version=\"1.1\">\n");
+			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:gak=\"http://www.gaeckler.at/GPXEXT/1/0\" creator=\"" + appName + "\" version=\"1.1\">\n");
 			writer.write("<metadata>\n");
 			writer.write("<name>gpxFile" + fnName + "</name>\n");
-			writer.write("<descr>Gpx Created with " + getLocalClassName() + " for Android</descr>\n");
+			writer.write("<descr>Gpx Created with " + appName + " for Android</descr>\n");
 			writer.write("<author><name>GAK</name></author>\n");
 			writer.write("</metadata>\n");
 
 			writer.write("<trk>\n");
 			writer.write("<name>Track" + fnName + "</name>\n");
-			writer.write("<descr>Track Created with " + getLocalClassName() + " for Android</descr>\n");
-			writer.write("<trkseq>\n");
+			writer.write("<descr>Track Created with " + appName + " for Android</descr>\n");
+			writer.write("<trkseg>\n");
 			while(true)
 			{
 				String line = reader.readLine();
@@ -1029,7 +1034,7 @@ public abstract class GpsActivity extends MyActivity
 				}
 				writer.println(line);
 			}
-			writer.write("</trkseq>\n");
+			writer.write("</trkseg>\n");
 			writer.write("</trk>\n");
 			writer.write("</gpx>\n");
 
@@ -1193,19 +1198,19 @@ public abstract class GpsActivity extends MyActivity
 		return m_gpsInterval;
 	}
 
-	static private double getEllapsedTime(Location loc1, Location loc2)
+	static private double getElapsedTime(Location loc1, Location loc2)
 	{
 		return (double)(loc2.getTime()-loc1.getTime())/1000.0;
 	}
 
 	static private double getSpeed(Location loc1, Location loc2)
 	{
-		return (double)loc1.distanceTo(loc2) / getEllapsedTime(loc1, loc2);
+		return (double)loc1.distanceTo(loc2) / getElapsedTime(loc1, loc2);
 	}
 
 	static private double getAccel(Location loc1, Location loc2)
 	{
-		return (double)(loc2.getSpeed()-loc1.getSpeed()) / getEllapsedTime(loc1, loc2);
+		return (double)(loc2.getSpeed()-loc1.getSpeed()) / getElapsedTime(loc1, loc2);
 	}
 
 	private final ReentrantLock		m_lock = new ReentrantLock();
