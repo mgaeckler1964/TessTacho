@@ -251,9 +251,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public boolean checkIsExternalStorageManager()
 	{
-		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() )
-			return true;
-		return false;
+		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager();
 	}
 
 	/**
@@ -262,9 +260,10 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public boolean checkReadStoragePermission()
 	{
-		if( checkIsExternalStorageManager() )
-			return true;
-		return checkSafFolderPermissions(false) || ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+		return checkIsExternalStorageManager()
+			|| checkSafFolderPermissions(false)
+			|| ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+		;
 	}
 
 	/**
@@ -466,7 +465,6 @@ public abstract class GpsActivity extends MyActivity
 				onGnssStatusChanged2(GPS_EVENT_SATELLITE_STATUS, status);
 			}
 		};
-		System.out.println("addGnssStatusListener");
 		m_locationManager.registerGnssStatusCallback(m_gnssStatusListener, null);
 
 		// Register the listener with the Location Manager to receive location updates
@@ -523,7 +521,6 @@ public abstract class GpsActivity extends MyActivity
 	/**
 	 * Select the storage folder
 	 */
-	@SuppressLint("NewApi")
 	@SuppressWarnings("deprecation")
 	public void selectStorageFolder()
 	{
@@ -565,7 +562,7 @@ public abstract class GpsActivity extends MyActivity
 				}
 				catch (SecurityException e)
 				{
-					Log.e("GPS", "Failed to take persistable permission", e);
+					Log.e(getLocalClassName(), "Failed to take persistable permission", e);
 				}
 			}
 		}
@@ -598,27 +595,20 @@ public abstract class GpsActivity extends MyActivity
 		Any file
 	-----------------------------------------------------------------------------------------------
 	 */
-	private  File getExternalFileName( boolean pub, String fileName )
+	private  File getExternalFile(boolean pub, String fileName )
 	{
 		File dir = pub
 				? Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
 				: getExternalFilesDir(null);
 
 		assert dir != null;
-		System.out.println(dir.getPath());
 		if( !dir.exists() )
 		{
 			dir.mkdir();
 		}
 		File file = new File(dir, fileName);	// pub ? s_filenameExternalPublic : s_filenameExternalPrivate
-		System.out.println(file.getPath());
 
 		return file;
-	}
-
-	private File getExternalFileName( String fileName )
-	{
-		return getExternalFileName( true, fileName );
 	}
 
 	/**
@@ -648,12 +638,12 @@ public abstract class GpsActivity extends MyActivity
 			}
 			catch (Exception e)
 			{
-				Log.e("GPS", "SAF failed, trying legacy", e);
+				Log.e(getLocalClassName(), "SAF failed, trying legacy", e);
 			}
 		}
 
 		// fall back for old androids
-		File file = getExternalFileName(pub, filename);
+		File file = getExternalFile(pub, filename);
 		return new FileInputStream(file);
 	}
 
@@ -709,12 +699,12 @@ public abstract class GpsActivity extends MyActivity
 			}
 			catch (java.lang.Exception e)
 			{
-				Log.e("GPS", "SAF write failed", e);
+				Log.e(getLocalClassName(), "SAF write failed", e);
 			}
 		}
 
 		// fall back for old androids
-		File file = getExternalFileName(filename);
+		File file = getExternalFile(pub, filename);
 		return new FileOutputStream(file, append);
 	}
 	/**
@@ -731,8 +721,7 @@ public abstract class GpsActivity extends MyActivity
 
 	private void deleteLocalFile(String filename)
 	{
-		// Strategy 1: Standard File API (Works for private internal storage or legacy)
-		File file = getExternalFileName(filename);
+		File file = getExternalFile(true, filename);
 		if( file != null && file.exists() )
 		{
 			if( file.delete() )
@@ -758,7 +747,7 @@ public abstract class GpsActivity extends MyActivity
 			}
 			catch (Exception e)
 			{
-				Log.e("GPS", "SAF failed, trying legacy", e);
+				Log.e(getLocalClassName(), "SAF failed, trying legacy", e);
 			}
 		}
 	}
@@ -853,7 +842,7 @@ public abstract class GpsActivity extends MyActivity
 				if( between( 14.44, lon, 14.46 )
 				&&  between( 48.350, lat, 48.37 ) )
 				{
-					System.out.println("I'm in");
+					//System.out.println("I'm in");
 				}
 */
 				if( newLocation != null )
@@ -867,8 +856,7 @@ public abstract class GpsActivity extends MyActivity
 		}
 		catch (IOException e)
 		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e(getLocalClassName(), "exception in readTrackPoints", e);
 		}
 
 	}
@@ -896,6 +884,11 @@ public abstract class GpsActivity extends MyActivity
 			new BufferedWriter(new OutputStreamWriter(m_xmlFileOS))
 		);
 	}
+
+	/**
+	 * Close the XML file
+	 * @throws IOException in case of an IO error
+	 */
 	public void closeXMLos() throws IOException
 	{
 		if( m_xmlPos != null )
@@ -911,6 +904,10 @@ public abstract class GpsActivity extends MyActivity
 
 	}
 
+	/**
+	 * Append a track point to the XML file in GPX format
+	 * @param loc the location to append
+	 */
 	public void appendTrackPoint2XML(Location loc)
 	{
 		try
@@ -969,7 +966,7 @@ public abstract class GpsActivity extends MyActivity
 				if(ellapsedTime>0)
 				{
 					m_xmlPos.write("<speed>");
-					m_xmlPos.print(distance/(ellapsedTime/1000));
+					m_xmlPos.print(distance/(ellapsedTime/1000.0));
 					m_xmlPos.write("</speed>\n");
 				}
 				m_xmlPos.write("</calculated>\n");
@@ -985,7 +982,11 @@ public abstract class GpsActivity extends MyActivity
 		}
 	}
 
-	public void createGpxFile() throws IOException
+	/**
+	 * Create a GPX file from the track points
+	 * @throws IOException in case of an IO error
+	 */
+	public void createGpxTrack() throws IOException
 	{
 		try
 		{
@@ -1001,7 +1002,7 @@ public abstract class GpsActivity extends MyActivity
 		String gpxFileName = fnName + ".gpx";
 		try(
 			InputStream is = openInputStream(xmlTrackName);
-			BufferedReader  reader = new BufferedReader(new InputStreamReader(is));
+			BufferedReader  reader = new BufferedReader(new InputStreamReader(is))
 		)
 		{
 			OutputStream os = openOutputStream(gpxFileName, false);
@@ -1047,7 +1048,7 @@ public abstract class GpsActivity extends MyActivity
 //			m_minAccel = 0;
 //			m_maxAccel = 0;
 //			m_maxSpeed = 0;
-			setBreakTime(0);
+			setBrakeTime(0);
 		}
 	}
 
@@ -1069,6 +1070,7 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	private SimpleDateFormat	m_sdfFname = null;
+
 	private SimpleDateFormat getFnameDateFormat()
 	{
 		if( m_sdfFname == null )
@@ -1119,6 +1121,7 @@ public abstract class GpsActivity extends MyActivity
 	{
 		return (int)loc.getAltitude()-50;
 	}
+
 	/**
 	 * set the sealevel altitude
 	 * @param loc the location
@@ -1184,6 +1187,7 @@ public abstract class GpsActivity extends MyActivity
 	 * Get the GPS interval
 	 * @return the interval in milliseconds
 	 */
+
 	public int getInterval()
 	{
 		return m_gpsInterval;
@@ -1193,20 +1197,23 @@ public abstract class GpsActivity extends MyActivity
 	{
 		return (double)(loc2.getTime()-loc1.getTime())/1000.0;
 	}
+
 	static private double getSpeed(Location loc1, Location loc2)
 	{
 		return (double)loc1.distanceTo(loc2) / getEllapsedTime(loc1, loc2);
 	}
+
 	static private double getAccel(Location loc1, Location loc2)
 	{
 		return (double)(loc2.getSpeed()-loc1.getSpeed()) / getEllapsedTime(loc1, loc2);
 	}
-	private final ReentrantLock m_lock = new ReentrantLock();
-	private Location[] m_lastLocations;
-	private boolean m_goodGps = false;
-	private long m_startTime = 0;
 
-	void lockLocationChanged( @NonNull Location newLocation, boolean fromGPS )
+	private final ReentrantLock		m_lock = new ReentrantLock();
+	private Location[]				m_lastLocations;
+	private boolean					m_goodGps = false;
+	private long					m_startTime = 0;
+
+	private void lockLocationChanged( @NonNull Location newLocation, boolean fromGPS )
 	{
 		if( !fromGPS
 		|| (
@@ -1490,22 +1497,22 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	/**
-	 * Get the break time (the time reducing the current speed=
+	 * Get the brake time (the time reducing the current speed=
 	 * @return the time in milliseconds
 	 */
-	public long getBreakTime()
+	public long getBrakeTime()
 	{
-		return m_processor.getBreakTime();
+		return m_processor.getBrakeTime();
 	}
 
 	/**
-	 * Resets the measuring of the break time
-	 * Set the break time (the time reducing the current speed=
-	 * @param breakTime the time in milliseconds
+	 * Resets the measuring of the brake time
+	 * Set the beake time (the time reducing the current speed=
+	 * @param brakeTime the time in milliseconds
 	 */
-	public void setBreakTime( long breakTime )
+	public void setBrakeTime( long brakeTime )
 	{
-		m_processor.setBreakTime(breakTime);
+		m_processor.setBrakeTime(brakeTime);
 	}
 
 	// may be this is useful

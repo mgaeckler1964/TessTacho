@@ -38,50 +38,41 @@ import android.location.Location;
 
 public class GpsProcessor
 {
-	static final int MAX_AGE_MS = 5000;
-	static final int MIN_BEARING_COUNT = 2;
-	static final int MIN_LOCATION_COUNT = 20;
+	private static final int MAX_AGE_MS = 5000;
+	private static final int MIN_BEARING_COUNT = 2;
+	private static final int MIN_LOCATION_COUNT = 20;
 
-	boolean					m_ignoreAccuracy = false;
-	double					m_accuracy = 0.0;
-	final Queue<Location>	m_locationList = new LinkedList<>();
-	long					m_breakTime = 0;
-	Location				m_startBreak = null;
-	double					m_curBearing = 0;
-	double					m_speed = 0;
-	double					m_accel = 0;
-	String					m_accelStr = "";
-	double					m_resolution = 99999999;
-
-	public static long speedToKmh( double speedMs )
-	{
-		return (long)(speedMs * 3.6 + 0.5);
-	}
-	public static double speedToMs( long speedKmh )
-	{
-		return (double)speedKmh / 3.6;
-	}
+	private boolean					m_ignoreAccuracy = false;
+	private double					m_accuracy = 0.0;
+	final private Queue<Location>	m_locationList = new LinkedList<>();
+	private long					m_brakeTime = 0;
+	private Location				m_startBrake = null;
+	private double					m_curBearing = 0;
+	private double					m_speed = 0;
+	private double					m_accel = 0;
+	private String					m_accelStr = "";
+	private double					m_resolution = 99999999;
 
 	/**
-	 * Get the break time (the time reducing the current speed=
+	 * Get the brake time (the time reducing the current speed=
 	 * @return the time in milliseconds
 	 */
-	public long getBreakTime()
+	public long getBrakeTime()
 	{
-		return m_breakTime + (
-			m_startBreak != null ? lastLocation().getTime()-m_startBreak.getTime() 
+		return m_brakeTime + (
+			m_startBrake != null ? lastLocation().getTime()-m_startBrake.getTime()
 								 :0);
 	}
 
 	/**
-	 * Resets the measuring of the break time
-	 * Set the break time (the time reducing the current speed=
-	 * @param breakTime the time in milliseconds
+	 * Resets the measuring of the brake time
+	 * Set the brake time (the time reducing the current speed=
+	 * @param brakeTime the time in milliseconds
 	 */
-	public void setBreakTime( long breakTime )
+	public void setBrakeTime( long brakeTime )
 	{
-		m_breakTime = breakTime;
-		m_startBreak = null;
+		m_brakeTime = brakeTime;
+		m_startBrake = null;
 	}
 
 	/**
@@ -100,6 +91,26 @@ public class GpsProcessor
 	public double getSpeed()
 	{
 		return m_speed;
+	}
+
+	/**
+	 * Convert a speed in m/s to km/h
+	 * @param speedMs the speed in m/s
+	 * @return the speed in km/h
+	 */
+	public static long speedToKmh( double speedMs )
+	{
+		return (long)(speedMs * 3.6 + 0.5);
+	}
+
+	/**
+	 * Convert a speed in km/h to m/s
+	 * @param speedKmh the speed in km/h
+	 * @return the speed in m/s
+	 */
+	public static double speedToMs( long speedKmh )
+	{
+		return (double)speedKmh / 3.6;
 	}
 
 	/**
@@ -347,19 +358,18 @@ public class GpsProcessor
 
 			if( m_speed < 1 )
 			{
-				if( m_startBreak == null )
+				if( m_startBrake == null )
 				{
-					m_startBreak = speedLocation;
+					m_startBrake = speedLocation;
 				}
 			}
-			else if( m_startBreak != null )
+			else if( m_startBrake != null )
 			{
-				m_breakTime += newLocation.getTime()-m_startBreak.getTime();
-				m_startBreak = null;
+				m_brakeTime += newLocation.getTime()-m_startBrake.getTime();
+				m_startBrake = null;
 			}
 			return true;
 		}
 		return false;
 	}
-
 }
