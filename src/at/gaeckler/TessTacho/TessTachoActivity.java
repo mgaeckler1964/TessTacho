@@ -129,7 +129,6 @@ public class TessTachoActivity extends GpsActivity
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
-		System.out.println("onCreate starts");
 		if( !checkLocationPermission() )
 		{
 			return;
@@ -246,7 +245,6 @@ public class TessTachoActivity extends GpsActivity
 	@Override
 	public boolean onOptionsItemSelected( MenuItem item )
 	{
-		System.out.println("onOptionsItemSelected " +item.toString());
 		int	itemId = item.getItemId();
 		if( itemId == R.id.exit )
 		{
