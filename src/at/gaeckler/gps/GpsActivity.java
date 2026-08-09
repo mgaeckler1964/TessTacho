@@ -397,7 +397,7 @@ public abstract class GpsActivity extends MyActivity
 	/** Called when the activity is first created. */
 	@SuppressLint("MissingPermission")
 	@Override
-	public void onCreate(Bundle savedInstanceState)
+	protected void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 		if(requestLocationPermission())
@@ -487,24 +487,21 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	@Override
-	public void onDestroy()
+	protected void onDestroy()
 	{
 		if( m_locationManager != null )
 		{
-			// Acquire a reference to the system Location Manager
-			// LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
 			m_locationManager.removeUpdates(m_locationListener);
-			//		m_locationManager.removeGpsStatusListener( m_gpsStatusListener );
 			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
-			try
-			{
-				closeRAWfileOS();
-			}
-			catch(IOException e)
-			{
-				// ignore
-			}
+		}
+		try
+		{
+			closeXMLos();
+			closeRAWfileOS();
+		}
+		catch(IOException e)
+		{
+			Log.e(getLocalClassName(), "closeXMLos or closeRAWfileOS failed", e);
 		}
 		super.onDestroy();
 	}
@@ -775,6 +772,7 @@ public abstract class GpsActivity extends MyActivity
 			new BufferedWriter(new OutputStreamWriter(m_rawFileOS))
 		);
 	}
+
 	private void closeRAWfileOS() throws IOException
 	{
 		if( m_rawPos != null )
@@ -789,6 +787,7 @@ public abstract class GpsActivity extends MyActivity
 		}
 
 	}
+
 	private void appendTrackPoint(Location loc)
 	{
 		if( !m_logRaw || !checkWriteStoragePermission() )
@@ -885,11 +884,7 @@ public abstract class GpsActivity extends MyActivity
 		);
 	}
 
-	/**
-	 * Close the XML file
-	 * @throws IOException in case of an IO error
-	 */
-	public void closeXMLos() throws IOException
+	private void closeXMLos() throws IOException
 	{
 		if( m_xmlPos != null )
 		{
