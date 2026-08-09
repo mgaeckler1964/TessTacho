@@ -487,6 +487,21 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	@Override
+	protected void onStop()
+	{
+		if( m_xmlPos != null )
+		{
+			m_xmlPos.flush();
+		}
+		if( m_rawPos != null )
+		{
+			m_rawPos.flush();
+		}
+
+		super.onStop();
+	}
+
+	@Override
 	protected void onDestroy()
 	{
 		if( m_locationManager != null )
@@ -603,9 +618,8 @@ public abstract class GpsActivity extends MyActivity
 		{
 			dir.mkdir();
 		}
-		File file = new File(dir, fileName);
 
-		return file;
+		return new File(dir, fileName);
 	}
 
 	/**
@@ -619,7 +633,7 @@ public abstract class GpsActivity extends MyActivity
 	{
 		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
 
-		if (uriString != null)
+		if( pub && uriString != null )
 		{
 			try
 			{
@@ -639,7 +653,7 @@ public abstract class GpsActivity extends MyActivity
 			}
 		}
 
-		// fall back for old androids
+		// fall back for old androids and private storage
 		File file = getExternalFile(pub, filename);
 		return new FileInputStream(file);
 	}
@@ -666,8 +680,12 @@ public abstract class GpsActivity extends MyActivity
 	public OutputStream openOutputStream(boolean pub, String filename, boolean append) throws IOException
 	{
 		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-		if (uriString != null)
+		if( pub && uriString != null )
 		{
+			if( !append )
+			{
+				deleteLocalFile(filename);
+			}
 			try
 			{
 				Uri treeUri = Uri.parse(uriString);
@@ -691,7 +709,7 @@ public abstract class GpsActivity extends MyActivity
 				if( file != null && file.exists())
 				{
 					// "wa" steht für Write-Append
-					return getContentResolver().openOutputStream(file.getUri(), append ? "wa" : "w");
+					return getContentResolver().openOutputStream(file.getUri(), append ? "wa" : "wt");
 				}
 			}
 			catch (java.lang.Exception e)
@@ -700,7 +718,7 @@ public abstract class GpsActivity extends MyActivity
 			}
 		}
 
-		// fall back for old androids
+		// fall back for old androids or private storage
 		File file = getExternalFile(pub, filename);
 		return new FileOutputStream(file, append);
 	}
@@ -719,14 +737,12 @@ public abstract class GpsActivity extends MyActivity
 	private void deleteLocalFile(String filename)
 	{
 		File file = getExternalFile(true, filename);
-		if( file != null && file.exists() )
+		if( file.exists() && file.delete())
 		{
-			if( file.delete() )
-				return;
+			return;
 		}
 
 		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-
 		if( uriString != null )
 		{
 			try
