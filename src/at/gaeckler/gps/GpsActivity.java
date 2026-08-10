@@ -33,20 +33,6 @@ package at.gaeckler.gps;
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
 
 import android.Manifest;
@@ -81,6 +67,8 @@ public abstract class GpsActivity extends MyActivity
 	public static final int GPS_EVENT_SATELLITE_STATUS = 2;		// GPS started GnssStatus.Callback received onSatelliteStatusChanged()
 	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
 	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
+
+	protected GpsLogger m_gpsLogger = null;
 
 	/*
 	-----------------------------------------------------------------------------------------------
@@ -405,6 +393,8 @@ public abstract class GpsActivity extends MyActivity
 			return;
 		}
 
+		m_gpsLogger = new GpsLogger(this, getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null) );
+
 		if( savedInstanceState != null ) {
 			m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
 			m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
@@ -489,15 +479,7 @@ public abstract class GpsActivity extends MyActivity
 	@Override
 	protected void onStop()
 	{
-		if( m_xmlPos != null )
-		{
-			m_xmlPos.flush();
-		}
-		if( m_rawPos != null )
-		{
-			m_rawPos.flush();
-		}
-
+		m_gpsLogger.onStop();
 		super.onStop();
 	}
 
@@ -509,15 +491,7 @@ public abstract class GpsActivity extends MyActivity
 			m_locationManager.removeUpdates(m_locationListener);
 			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
 		}
-		try
-		{
-			closeXMLos();
-			closeRAWfileOS();
-		}
-		catch(IOException e)
-		{
-			Log.e(getLocalClassName(), "closeXMLos or closeRAWfileOS failed", e);
-		}
+		m_gpsLogger.onDestroy();
 		super.onDestroy();
 	}
 
@@ -564,10 +538,12 @@ public abstract class GpsActivity extends MyActivity
 					getContentResolver().takePersistableUriPermission(treeUri, takeFlags);
 
 					// URI in SharedPreferences speichern
+					String uriString = treeUri.toString();
 					getSharedPreferences(CONFIG_FILE, MODE_PRIVATE)
 							.edit()
-							.putString(CONFIG_KEY, treeUri.toString())
+							.putString(CONFIG_KEY, uriString)
 							.apply();
+					m_gpsLogger.setUriString(uriString);
 
 					// Aktivität neu starten oder Initialisierung fortsetzen
 					recreate();
@@ -600,516 +576,6 @@ public abstract class GpsActivity extends MyActivity
 		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
 
 		return uriString != null;
-	}
-
-	/*
-	-----------------------------------------------------------------------------------------------
-		Any file
-	-----------------------------------------------------------------------------------------------
-	 */
-	private  File getExternalFile(boolean pub, String fileName )
-	{
-		File dir = pub
-				? Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-				: getExternalFilesDir(null);
-
-		assert dir != null;
-		if( !dir.exists() )
-		{
-			dir.mkdir();
-		}
-
-		return new File(dir, fileName);
-	}
-
-	/**
-	 * Open a file for reading
-	 * @param pub if true, the file is in the public directory, otherwise in the private directory
-	 * @param filename the filename to use
-	 * @return the input stream
-	 * @throws IOException in case of an IO error
-	 */
-	public InputStream openInputStream(boolean pub, String filename) throws IOException
-	{
-		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-
-		if( pub && uriString != null )
-		{
-			try
-			{
-				// MODERNER WEG (Vorbereitung)
-				Uri treeUri = Uri.parse(uriString);
-				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
-				DocumentFile file = root.findFile(filename);
-
-				if (file != null && file.exists())
-				{
-					return getContentResolver().openInputStream(file.getUri());
-				}
-			}
-			catch (Exception e)
-			{
-				Log.e(getLocalClassName(), "SAF failed, trying legacy", e);
-			}
-		}
-
-		// fall back for old androids and private storage
-		File file = getExternalFile(pub, filename);
-		return new FileInputStream(file);
-	}
-
-	/**
-	 * Open a file for reading in a public directory
-	 * @param filename the filename to read
-	 * @return the input stream
-	 * @throws IOException in case of an IO error
-	 */
-	public InputStream openInputStream( String filename) throws IOException
-	{
-		return openInputStream(true, filename);
-	}
-
-	/**
-	 * Open a file for writing
-	 * @param pub if true, the file is in the public directory, otherwise in the private directory
-	 * @param filename the filename to use
-	 * @param append if true, the file is opened in append mode, otherwise in write mode
-	 * @return the output stream
-	 * @throws IOException in case of an IO error
-	 */
-	public OutputStream openOutputStream(boolean pub, String filename, boolean append) throws IOException
-	{
-		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-		if( pub && uriString != null )
-		{
-			if( !append )
-			{
-				deleteLocalFile(filename);
-			}
-			try
-			{
-				Uri treeUri = Uri.parse(uriString);
-				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
-				DocumentFile file = root.findFile(filename);
-				if (file == null)
-				{
-					String mime;
-
-					if( filename.endsWith(".gpx") )
-						mime = "application/gpx+xml";
-					else if( filename.endsWith(".xml") )
-						mime = "text/xml";
-					else if( filename.endsWith(".txt") )
-						mime = "text/plain";
-					else
-						mime = "application/octet-stream";
-
-					file = root.createFile(mime, filename);
-				}
-				if( file != null && file.exists())
-				{
-					// "wa" steht für Write-Append
-					return getContentResolver().openOutputStream(file.getUri(), append ? "wa" : "wt");
-				}
-			}
-			catch (java.lang.Exception e)
-			{
-				Log.e(getLocalClassName(), "SAF write failed", e);
-			}
-		}
-
-		// fall back for old androids or private storage
-		File file = getExternalFile(pub, filename);
-		return new FileOutputStream(file, append);
-	}
-	/**
-	 * Open a file for writing in a public directory
-	 * @param filename the filename to use
-	 * @param append if true, the file is opened in append mode, otherwise in write mode
-	 * @return the output stream
-	 * @throws IOException in case of an IO error
-	 */
-	public OutputStream openOutputStream(String filename, boolean append) throws IOException
-	{
-		return openOutputStream(true, filename, append);
-	}
-
-	private void deleteLocalFile(String filename)
-	{
-		File file = getExternalFile(true, filename);
-		if( file.exists() && file.delete())
-		{
-			return;
-		}
-
-		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-		if( uriString != null )
-		{
-			try
-			{
-				Uri treeUri = Uri.parse(uriString);
-				DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
-				DocumentFile dFile = root.findFile(filename);
-
-				if( dFile != null && dFile.exists() )
-				{
-					if( dFile.delete() )
-					{
-						Log.d("GPS", "File deleted via SAF: " + filename);
-					}				}
-			}
-			catch (Exception e)
-			{
-				Log.e(getLocalClassName(), "SAF failed, trying legacy", e);
-			}
-		}
-	}
-
-	/*
-	-----------------------------------------------------------------------------------------------
-		RAW file
-	-----------------------------------------------------------------------------------------------
-	 */
-	// used for debugging
-	private Boolean				m_logRaw = false;
-	private OutputStream		m_rawFileOS = null;
-	private PrintWriter			m_rawPos = null;
-	private static final String RAW_TRACK_FILE = ".temp.raw.gps.txt";
-
-	private String getRawTrackFileName()
-	{
-		return getLocalClassName() + RAW_TRACK_FILE;
-	}
-
-	private void openRAWfileOS() throws IOException
-	{
-		m_rawFileOS = openOutputStream(getRawTrackFileName(), true);
-		m_rawPos = new PrintWriter(
-			new BufferedWriter(new OutputStreamWriter(m_rawFileOS))
-		);
-	}
-
-	private void closeRAWfileOS() throws IOException
-	{
-		if( m_rawPos != null )
-		{
-			m_rawPos.close();
-			m_rawPos = null;
-		}
-		if( m_rawFileOS != null )
-		{
-			m_rawFileOS.close();
-			m_rawFileOS = null;
-		}
-
-	}
-
-	private void appendTrackPoint(Location loc)
-	{
-		if( !m_logRaw || !checkWriteStoragePermission() )
-		{
-			return;
-		}
-		try
-		{
-			if( m_rawPos == null )
-			{
-				openRAWfileOS();
-			}
-			m_rawPos.println(locationString(loc, true));
-		}
-		catch( Exception e)
-		{
-			// ignore
-		}
-	}
-
-	/**
-	 * Read the track points from the file
-	 */
-	public void readTrackPoints()
-	{
-		if(!checkReadStoragePermission())
-		{
-			return;
-		}
-
-		try
-		{
-			InputStream is = openInputStream(getRawTrackFileName());
-			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-
-			while( true )
-			{
-				String line = reader.readLine();
-				if( line == null )
-				{
-					break;
-				}
-				Location newLocation = locationString(line,true);
-
-				// 14.4426064, 48.3637592,
-				// 14.4481877, 48.3570682
-/*
-				double lon = newLocation.getLongitude();
-				double lat = newLocation.getLatitude();
-
-				if( between( 14.44, lon, 14.46 )
-				&&  between( 48.350, lat, 48.37 ) )
-				{
-					//System.out.println("I'm in");
-				}
-*/
-				if( newLocation != null )
-				{
-					lockLocationChanged(newLocation, false);
-				}
-			}
-
-			reader.close();
-			m_logRaw = true;
-		}
-		catch (IOException e)
-		{
-			Log.e(getLocalClassName(), "exception in readTrackPoints", e);
-		}
-
-	}
-
-	/*
-	-----------------------------------------------------------------------------------------------
-		XML file
-	-----------------------------------------------------------------------------------------------
-	 */
-	private static final String XML_TRACK_FILE = ".temp.gpx";
-	private OutputStream	m_xmlFileOS = null;
-	private PrintWriter		m_xmlPos = null;
-
-	private Location		m_lastTrackPoint = null;
-	float					m_lastBearing=0;
-
-	private String getXmlTrackFileName()
-	{
-		return getLocalClassName() + XML_TRACK_FILE;
-	}
-	private void openXMLos() throws IOException
-	{
-		m_xmlFileOS = openOutputStream(getXmlTrackFileName(), true);
-		m_xmlPos = new PrintWriter(
-			new BufferedWriter(new OutputStreamWriter(m_xmlFileOS))
-		);
-	}
-
-	private void closeXMLos() throws IOException
-	{
-		if( m_xmlPos != null )
-		{
-			m_xmlPos.close();
-			m_xmlPos = null;
-		}
-		if( m_xmlFileOS != null )
-		{
-			m_xmlFileOS.close();
-			m_xmlFileOS = null;
-		}
-
-	}
-
-	/**
-	 * Append a track point to the XML file in GPX format
-	 * @param loc the location to append
-	 */
-	public void appendTrackPoint2XML(Location loc)
-	{
-		try
-		{
-			if( m_xmlPos == null )
-			{
-				openXMLos();
-			}
-			m_xmlPos.write("<trkpt lon=\"");
-			m_xmlPos.print(loc.getLongitude());
-			m_xmlPos.write("\" lat=\"");
-			m_xmlPos.print(loc.getLatitude());
-			m_xmlPos.write("\">\n");
-			m_xmlPos.write("\t<ele>");
-			m_xmlPos.print(getCorrectedAltitude(loc));
-			m_xmlPos.write("</ele>\n");
-			m_xmlPos.write("\t<geoidheight>");
-			m_xmlPos.print(loc.getAltitude());
-			m_xmlPos.write("</geoidheight>\n");
-			m_xmlPos.write("\t<time>");
-			m_xmlPos.print(getDateLoc(loc, true));
-			m_xmlPos.write("</time>\n");
-
-			m_xmlPos.write("\t<extensions>\n");
-
-			m_xmlPos.write("\t\t<gak:utcStamp>");
-			m_xmlPos.print(loc.getTime());
-			m_xmlPos.write("</gak:utcStamp>\n");
-			m_xmlPos.write("\t\t<gak:speed>");
-			m_xmlPos.print(loc.getSpeed());
-			m_xmlPos.write("</gak:speed>\n");
-			if( m_lastTrackPoint == null )
-			{
-				m_lastTrackPoint = loc;
-			}
-			else
-			{
-				m_xmlPos.write("\t\t<gak:calculated>\n");
-
-				float bearing = m_lastTrackPoint.bearingTo(loc);
-				m_xmlPos.write("\t\t\t<gak:bearing>");
-				m_xmlPos.print(bearing);
-				m_xmlPos.write("</gak:bearing>\n");
-
-				m_xmlPos.write("\t\t\t<gak:turn>");
-				m_xmlPos.print(bearing-m_lastBearing);
-				m_xmlPos.write("</gak:turn>\n");
-
-				float distance = m_lastTrackPoint.distanceTo(loc);
-				m_xmlPos.write("\t\t\t<gak:distance>");
-				m_xmlPos.print(distance);
-				m_xmlPos.write("</gak:distance>\n");
-
-				long elapsedTime = loc.getTime()-m_lastTrackPoint.getTime();
-				m_xmlPos.write("\t\t\t<gak:elapsedTime>");
-				m_xmlPos.print(elapsedTime);
-				m_xmlPos.write("</gak:elapsedTime>\n");
-
-				if(elapsedTime>0)
-				{
-					m_xmlPos.write("\t\t\t<gak:speed>");
-					m_xmlPos.print(distance/(elapsedTime/1000.0));
-					m_xmlPos.write("</gak:speed>\n");
-				}
-				m_xmlPos.write("\t\t</gak:calculated>\n");
-
-
-				m_lastBearing = bearing;
-				m_lastTrackPoint = loc;
-			}
-			m_xmlPos.write("\t</extensions>\n");
-			m_xmlPos.write("</trkpt>\n");
-		}
-		catch( Exception e)
-		{
-			// ignore
-		}
-	}
-
-	/**
-	 * Create a GPX file from the track points
-	 * @throws IOException in case of an IO error
-	 */
-	public void createGpxTrack() throws IOException
-	{
-		try
-		{
-			closeXMLos();
-		}
-		catch( Exception e )
-		{
-			// ignore
-		}
-
-		String xmlTrackName = getXmlTrackFileName();
-		String fnName = getDateLong(m_startTime, false);
-		String gpxFileName = fnName + ".gpx";
-		try(
-			InputStream is = openInputStream(xmlTrackName);
-			BufferedReader  reader = new BufferedReader(new InputStreamReader(is))
-		)
-		{
-			OutputStream os = openOutputStream(gpxFileName, false);
-			PrintWriter writer = new PrintWriter(os);
-			String appName = getString(getApplicationInfo().labelRes);
-			writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n");
-			writer.write("<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:gak=\"http://www.gaeckler.at/GPXEXT/1/0\" creator=\"" + appName + "\" version=\"1.1\">\n");
-			writer.write("<metadata>\n");
-			writer.write("<name>gpxFile" + fnName + "</name>\n");
-			writer.write("<descr>Gpx Created with " + appName + " for Android</descr>\n");
-			writer.write("<author><name>GAK</name></author>\n");
-			writer.write("</metadata>\n");
-
-			writer.write("<trk>\n");
-			writer.write("<name>Track" + fnName + "</name>\n");
-			writer.write("<descr>Track Created with " + appName + " for Android</descr>\n");
-			writer.write("<trkseg>\n");
-			while(true)
-			{
-				String line = reader.readLine();
-				if(line == null)
-				{
-					break;
-				}
-				writer.println(line);
-			}
-			writer.write("</trkseg>\n");
-			writer.write("</trk>\n");
-			writer.write("</gpx>\n");
-
-			writer.close();
-			reader.close();
-
-			deleteLocalFile(xmlTrackName);
-
-			///  TODO analyze the usage, This code is from GpxMotorCycle
-			// reset
-//			m_distance = 0;
-//			m_distanceLocation = null;
-//			m_upMeter = 0;
-//			m_downMeter = 0;
-			m_startTime = 0;
-//			m_minAccel = 0;
-//			m_maxAccel = 0;
-//			m_maxSpeed = 0;
-			setBrakeTime(0);
-		}
-	}
-
-	/*
-	-----------------------------------------------------------------------------------------------
-		Date Time Format
-	-----------------------------------------------------------------------------------------------
-	 */
-	private SimpleDateFormat	m_sdfIso = null;
-
-	private SimpleDateFormat getIsoDateFormat()
-	{
-		if( m_sdfIso == null )
-		{
-			m_sdfIso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-			m_sdfIso.setTimeZone(TimeZone.getTimeZone("UTC"));
-		}
-		return m_sdfIso;
-	}
-
-	private SimpleDateFormat	m_sdfFname = null;
-
-	private SimpleDateFormat getFnameDateFormat()
-	{
-		if( m_sdfFname == null )
-		{
-			m_sdfFname = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-			m_sdfFname.setTimeZone(TimeZone.getTimeZone("UTC"));
-		}
-		return m_sdfFname;
-	}
-
-	private String getDateDate( Date date, boolean useIso )
-	{
-		return (useIso ? getIsoDateFormat() : getFnameDateFormat()).format(date);
-	}
-
-	private String getDateLong( long timeStamp, boolean useIso )
-	{
-		return getDateDate(new Date(timeStamp), useIso);
-	}
-
-	private String getDateLoc( Location loc, boolean useIso )
-	{
-		return getDateLong(loc.getTime(), useIso);
 	}
 
 	/*
@@ -1229,7 +695,12 @@ public abstract class GpsActivity extends MyActivity
 	private boolean					m_goodGps = false;
 	private long					m_startTime = 0;
 
-	private void lockLocationChanged( @NonNull Location newLocation, boolean fromGPS )
+	public long getStartTime()
+	{
+		return m_startTime;
+	}
+
+	private void lockLocationChanged(@NonNull Location newLocation, boolean fromGPS )
 	{
 		if( !fromGPS
 		|| (
@@ -1249,7 +720,8 @@ public abstract class GpsActivity extends MyActivity
 						m_sumLatitude += newLocation.getLatitude();
 						m_sumAltitude += newLocation.getAltitude();
 					}
-					appendTrackPoint(newLocation);
+					if( m_gpsLogger.getLogRaw() && checkWriteStoragePermission() )
+						m_gpsLogger.appendTrackPoint(newLocation);
 				}
 				
 				if( m_startTime==0 || m_lastLocations == null || 
@@ -1316,94 +788,6 @@ public abstract class GpsActivity extends MyActivity
 	protected void simulateLocationFix( @NonNull Location newLocation)
 	{
 		lockLocationChanged( newLocation, false );
-	}
-
-	/*
-	-----------------------------------------------------------------------------------------------
-		(de)serialization of a location to a string
-	-----------------------------------------------------------------------------------------------
-	 */
-	protected static final String	NAME_KEY = "name";
-
-	private static String locationString( Location src, boolean raw )
-	{
-		String result = src.getProvider() + '|' +
-				src.getLongitude() + '|' +
-				src.getLatitude() + '|' +
-				src.getAltitude();
-
-		if( raw )
-		{
-			result += '|' + src.getAccuracy() +
-				'|' + src.getTime();
-		}
-		return result;
-	}
-
-	/**
-	 * serializes a location to a string
-	 * @param src the location to convert
-	 * @return the string representation of the location
-	 */
-	public static String locationString( @NonNull Location src )
-	{
-		return locationString(src, false);
-	}
-
-	private static Location locationString( String src, boolean raw )
-	{
-		if(src == null)
-		{
-			/*@*/		return null;
-		}
-		String [] elements = src.split("[|]");
-		if(elements.length < 3)
-		{
-			/*@*/		return null;
-		}
-		String provider = elements[0];
-		double longitude = Double.parseDouble(elements[1]);
-		double latitude = Double.parseDouble(elements[2]);
-
-		if( Math.abs(longitude) < 0.01 && Math.abs(latitude) < 0.01)
-		{
-			/*@*/		return null;
-		}
-		Location newLocation = new Location(provider);
-		newLocation.setLongitude(longitude);
-		newLocation.setLatitude(latitude);
-		if (elements.length >= 4)
-		{
-			newLocation.setAltitude(Double.parseDouble(elements[3]));
-		}
-
-		if( raw )
-		{
-			if (elements.length < 6)
-			{
-				/*@*/			return null;
-			}
-			newLocation.setAccuracy((float) Double.parseDouble(elements[4]));
-			newLocation.setTime( Long.parseLong(elements[5]) );
-		}
-		else if (elements.length >= 5)
-		{
-			String name = elements[4];
-			Bundle bundle = new Bundle();
-			bundle.putString(NAME_KEY, name);
-			newLocation.setExtras(bundle);
-		}
-		return newLocation;
-	}
-
-	/**
-	 * Deserializes a location from a string
-	 * @param src the string representation of the location
-	 * @return the location
-	 */
-	public static Location locationString( String src )
-	{
-		return locationString( src, false );
 	}
 
 	/*
