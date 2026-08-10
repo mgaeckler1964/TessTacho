@@ -33,8 +33,6 @@ package at.gaeckler.gps;
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
-import java.util.concurrent.locks.ReentrantLock;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -68,8 +66,6 @@ public abstract class GpsActivity extends MyActivity
 	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
 	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
 
-	protected GpsLogger m_gpsLogger = null;
-
 	/*
 	-----------------------------------------------------------------------------------------------
 		Helper
@@ -102,21 +98,12 @@ public abstract class GpsActivity extends MyActivity
 	private double	m_sumLongitude = 0;
 	private double	m_sumLatitude = 0;
 	private double	m_sumAltitude = 0;
-	private long	m_locationFixCount = 0;
+	private long	m_locationCalibrationCount = 0;
 
 	/**
-	 * Check the calibration mode
-	 * @return true if calibration is active, false otherwise
+	 * Enable calibration if not yet enabled
 	 */
-	public boolean isCalibrationMode()
-	{
-		return m_calibration;
-	}
-
-	/**
-	 * Activate the calibration mode if not yet done
-	 */
-	public void enableCalibration()
+	public  void enableCalibration()
 	{
 		if( !m_calibration )
 		{
@@ -124,29 +111,29 @@ public abstract class GpsActivity extends MyActivity
 			m_sumLongitude = 0;
 			m_sumLatitude = 0;
 			m_sumAltitude = 0;
-			m_locationFixCount = 0;
+			m_locationCalibrationCount = 0;
 		}
 	}
 
 	/**
-	 * Deactivate the calibration mode
+	 * Disable calibration
 	 */
-	public void disableCalibration()
+	protected void disableCalibration()
 	{
 		m_calibration = false;
 	}
 
 	/**
 	 * Get the calibrated location
-	 * @param provider the provider to use
-	 * @return a calibrated location that is the mean of all locations
+	 * @param provider to be used for the location
+	 * @return the calibrated location (the mean of all gps location since calibration started)
 	 */
 	public Location getCalibratedLocation( String provider )
 	{
 		Location location = new Location(provider);
-		double longitude = m_sumLongitude/m_locationFixCount;
-		double latitude = m_sumLatitude/m_locationFixCount;
-		double altitude = m_sumAltitude/m_locationFixCount;
+		double longitude = m_sumLongitude/m_locationCalibrationCount;
+		double latitude = m_sumLatitude/m_locationCalibrationCount;
+		double altitude = m_sumAltitude/m_locationCalibrationCount;
 		location.setLongitude(longitude);
 		location.setLatitude(latitude);
 		location.setAltitude(altitude);
@@ -155,13 +142,23 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	/**
+	 * Check if calibration is enabled
+	 * @return true if calibration is enabled, false otherwise
+	 */
+	protected boolean getCalibration()
+	{
+		return m_calibration;
+	}
+
+	/**
 	 * Get the number of location fixes
 	 * @return the number of location fixes
 	 */
 	public long getLocationFixCount()
 	{
-		return m_locationFixCount;
+		return m_calibration ? m_locationCalibrationCount : m_gpsReceiver.getLocationFixCount();
 	}
+
 
 	/*
 	-----------------------------------------------------------------------------------------------
@@ -393,15 +390,17 @@ public abstract class GpsActivity extends MyActivity
 			return;
 		}
 
-		m_gpsLogger = new GpsLogger(this, getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null) );
-
-		if( savedInstanceState != null ) {
+		if( savedInstanceState != null )
+		{
 			m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
-			m_locationFixCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
+			m_locationCalibrationCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
 			m_sumLongitude = savedInstanceState.getDouble(SUM_LONGITUDE_KEY, 0);
 			m_sumLatitude = savedInstanceState.getDouble(SUM_LATITUDE_KEY, 0);
 			m_sumAltitude = savedInstanceState.getDouble(SUM_ALTITUDE_KEY, 0);
 		}
+
+		m_gpsLogger = new GpsLogger(this, getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null) );
+		m_gpsReceiver = new GpsReceiver(m_processor, m_gpsLogger);
 
 		// Acquire a reference to the system Location Manager
 		m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
@@ -469,7 +468,7 @@ public abstract class GpsActivity extends MyActivity
 	{
 		super.onSaveInstanceState(outState);
 
-		outState.putLong(FIX_COUNT_KEY, m_locationFixCount);
+		outState.putLong(FIX_COUNT_KEY, m_locationCalibrationCount);
 		outState.putBoolean(CALIBRATION_KEY, m_calibration);
 		outState.putDouble(SUM_LONGITUDE_KEY, m_sumLongitude);
 		outState.putDouble(SUM_LATITUDE_KEY, m_sumLatitude);
@@ -583,36 +582,17 @@ public abstract class GpsActivity extends MyActivity
 		Basic GPS handling
 	-----------------------------------------------------------------------------------------------
 	 */
+
+	protected GpsLogger m_gpsLogger = null;
+	private GpsReceiver m_gpsReceiver = null;
+
 	private CountDownTimer		m_gpsTimer = null;
 	private int					m_gpsInterval = 0;
-	private static final double	MAX_SPEED = 100;
-	private static final double	MAX_ACCEL = 100;
 
 	public abstract void onLocationEnabled();
 	public abstract void onLocationDisabled();
 	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
-
-	// correction valid for Linz/Austria
-	/**
-	 * Get the corrected sealevel altitude
-	 * @param loc the location
-	 * @return the corrected sealevelaltitude
-	 */
-	static public int getCorrectedAltitude( Location loc )
-	{
-		return (int)loc.getAltitude()-50;
-	}
-
-	/**
-	 * set the sealevel altitude
-	 * @param loc the location
-	 * @param altitude the sealevel altitude
-	 */
-	static public void setCorrectedAltitude( Location loc, double altitude )
-	{
-		loc.setAltitude(altitude+50);
-	}
 
 	/**
 	 * Create the GPS timer that periodically checks the location
@@ -635,7 +615,7 @@ public abstract class GpsActivity extends MyActivity
 					Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 					if( newLocation != null )
 					{
-						lockLocationChanged(newLocation, true);
+						m_gpsReceiver.lockLocationChanged(newLocation, true, (loc)->onLocationChanged( loc ));
 					}
 				}
 
@@ -675,110 +655,16 @@ public abstract class GpsActivity extends MyActivity
 		return m_gpsInterval;
 	}
 
-	static private double getElapsedTime(Location loc1, Location loc2)
-	{
-		return (double)(loc2.getTime()-loc1.getTime())/1000.0;
-	}
-
-	static private double getSpeed(Location loc1, Location loc2)
-	{
-		return (double)loc1.distanceTo(loc2) / getElapsedTime(loc1, loc2);
-	}
-
-	static private double getAccel(Location loc1, Location loc2)
-	{
-		return (double)(loc2.getSpeed()-loc1.getSpeed()) / getElapsedTime(loc1, loc2);
-	}
-
-	private final ReentrantLock		m_lock = new ReentrantLock();
-	private Location[]				m_lastLocations;
-	private boolean					m_goodGps = false;
-	private long					m_startTime = 0;
-
-	public long getStartTime()
-	{
-		return m_startTime;
-	}
-
 	private void lockLocationChanged(@NonNull Location newLocation, boolean fromGPS )
 	{
-		if( !fromGPS
-		|| (
-			null != newLocation.getProvider()
-			&& newLocation.getProvider().equalsIgnoreCase(LocationManager.GPS_PROVIDER) )
-		)
+		if( m_calibration && fromGPS )
 		{
-			m_lock.lock();
-			try
-			{
-				if( fromGPS )
-				{
-					++m_locationFixCount;
-					if( m_calibration )
-					{
-						m_sumLongitude += newLocation.getLongitude();
-						m_sumLatitude += newLocation.getLatitude();
-						m_sumAltitude += newLocation.getAltitude();
-					}
-					if( m_gpsLogger.getLogRaw() && checkWriteStoragePermission() )
-						m_gpsLogger.appendTrackPoint(newLocation);
-				}
-				
-				if( m_startTime==0 || m_lastLocations == null || 
-						(!m_goodGps && (newLocation.getTime() - m_startTime) > 60000))
-				{
-					m_startTime = newLocation.getTime();
-					m_lastLocations = new Location[2];
-					m_goodGps = false;
-				}
-	
-				if( m_lastLocations[0] == null )
-				{
-					m_lastLocations[0] = newLocation;
-				}
-				else if( m_lastLocations[1] == null )
-				{
-					if(m_lastLocations[0].getTime() < newLocation.getTime() )
-					{
-						if( !newLocation.hasSpeed() )
-						{
-							double speed = getSpeed(m_lastLocations[0],newLocation);
-							if( speed < MAX_SPEED )
-							{
-								newLocation.setSpeed((float) speed);
-							}
-							else
-							{
-								newLocation = null;
-							}
-						}
-						m_lastLocations[1] = newLocation;
-					}
-				}
-				else
-				{
-					if(m_lastLocations[1].getTime() < newLocation.getTime() )
-					{
-						double speed = getSpeed(m_lastLocations[1],newLocation);
-						newLocation.setSpeed((float) speed);
-						double accel = getAccel(m_lastLocations[1], newLocation ); 
-	
-						if(speed < MAX_SPEED && accel < MAX_ACCEL )
-						{
-							m_lastLocations[0] = m_lastLocations[1];
-							m_lastLocations[1] = newLocation;
-							m_goodGps = true;
-							if( m_processor.onLocationChanged(newLocation) )
-							{
-								onLocationChanged( newLocation );
-							}
-						}
-					}
-				}
-			} finally {
-				m_lock.unlock();
-			}
+			m_sumLongitude += newLocation.getLongitude();
+			m_sumLatitude += newLocation.getLatitude();
+			m_sumAltitude += newLocation.getAltitude();
+			m_locationCalibrationCount++;
 		}
+		m_gpsReceiver.lockLocationChanged(newLocation, fromGPS, this::onLocationChanged);
 	}
 
 	/**
@@ -787,7 +673,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	protected void simulateLocationFix( @NonNull Location newLocation)
 	{
-		lockLocationChanged( newLocation, false );
+		m_gpsReceiver.lockLocationChanged( newLocation, false, this::onLocationChanged);
 	}
 
 	/*

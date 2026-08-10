@@ -52,7 +52,7 @@ import java.io.PrintWriter;
 
 public class GpsLogger
 {
-	private Context m_context;
+	private final Context m_context;
 	private String m_uriString;
 
 	GpsLogger(Context context, String uriString)
@@ -389,16 +389,67 @@ public class GpsLogger
 	-----------------------------------------------------------------------------------------------
 	 */
 	private static final String XML_TRACK_FILE = ".temp.gpx";
+	private boolean			m_trackGps = false;
+	private long			m_startTime = 0;
 	private OutputStream	m_xmlFileOS = null;
 	private PrintWriter		m_xmlPos = null;
 
 	private Location		m_lastTrackPoint = null;
-	float					m_lastBearing=0;
+	private float			m_lastBearing=0;
+
+	/**
+	 * restart the track after app restart
+	 * @param track if true, we are logging the track points
+	 * @param startTime the start time to restore
+	 */
+	public void restartTrack( boolean track, long startTime)
+	{
+		m_trackGps = track;
+		m_startTime = startTime;
+	}
+
+	/**
+	 * start the track
+	 */
+	public void startTrack()
+	{
+		m_trackGps = true;
+		m_startTime = 0;
+	}
+
+	/**
+	 * stop the track without saving it
+	 */
+	public void stopTrack()
+	{
+		m_trackGps = false;
+		m_startTime = 0;
+	}
+
+	/**
+	 * get the track GPS flag
+	 * @return true, if we are logging the track points
+	 */
+	public boolean getTrackGps()
+	{
+		return m_trackGps;
+	}
+
+	/**
+	 * get the track start time
+	 *
+	 * @return the time when we have started logging
+	 */
+	public long getTrackGpsStart()
+	{
+		return m_startTime;
+	}
 
 	private String getXmlTrackFileName()
 	{
 		return m_context.getPackageName() + XML_TRACK_FILE;
 	}
+
 	private void openXMLos() throws IOException
 	{
 		m_xmlFileOS = openOutputStream(getXmlTrackFileName(), true);
@@ -430,6 +481,9 @@ public class GpsLogger
 	{
 		try
 		{
+			if( m_startTime == 0 )
+				m_startTime = loc.getTime();
+
 			if( m_xmlPos == null )
 			{
 				openXMLos();
@@ -440,7 +494,7 @@ public class GpsLogger
 			m_xmlPos.print(loc.getLatitude());
 			m_xmlPos.write("\">\n");
 			m_xmlPos.write("\t<ele>");
-			m_xmlPos.print(GpsActivity.getCorrectedAltitude(loc));
+			m_xmlPos.print(GpsUtils.getCorrectedAltitude(loc));
 			m_xmlPos.write("</ele>\n");
 			m_xmlPos.write("\t<geoidheight>");
 			m_xmlPos.print(loc.getAltitude());
@@ -509,7 +563,7 @@ public class GpsLogger
 	 * Create a GPX file from the track points
 	 * @throws IOException in case of an IO error
 	 */
-	public void createGpxTrack( long startTime ) throws IOException
+	public void createGpxTrack() throws IOException
 	{
 		try
 		{
@@ -521,7 +575,7 @@ public class GpsLogger
 		}
 
 		String xmlTrackName = getXmlTrackFileName();
-		String fnName = GpsUtils.getDateLong(startTime, false);
+		String fnName = GpsUtils.getDateLong(m_startTime, false);
 		String gpxFileName = fnName + ".gpx";
 		try(
 				InputStream is = openInputStream(xmlTrackName);
@@ -567,7 +621,8 @@ public class GpsLogger
 //			m_distanceLocation = null;
 //			m_upMeter = 0;
 //			m_downMeter = 0;
-//			m_startTime = 0;
+			m_startTime = 0;
+			m_trackGps = false;
 //			m_minAccel = 0;
 //			m_maxAccel = 0;
 //			m_maxSpeed = 0;

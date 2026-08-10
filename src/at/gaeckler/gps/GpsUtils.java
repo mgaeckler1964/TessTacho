@@ -44,6 +44,66 @@ public class GpsUtils
 {
 	/*
 	-----------------------------------------------------------------------------------------------
+		some useful tools for loactions
+	-----------------------------------------------------------------------------------------------
+	 */
+
+	/**
+	 * Calculate the elapsed time between two locations
+	 * @param loc1 start location
+	 * @param loc2 end location
+	 * @return time in seconds
+	 */
+	static public double getElapsedTime(Location loc1, Location loc2)
+	{
+		return (double)(loc2.getTime()-loc1.getTime())/1000.0;
+	}
+
+	/**
+	 * Calculate the speed between two locations
+	 * @param loc1 start location
+	 * @param loc2 end location
+	 * @return speed in m/s
+	 */
+	static public double getSpeed(Location loc1, Location loc2)
+	{
+		return (double)loc1.distanceTo(loc2) / getElapsedTime(loc1, loc2);
+	}
+
+	/**
+	 * Calculate the acceleration between two locations
+	 * @param loc1 start location
+	 * @param loc2 end location
+	 * @return speed in m/s²
+	 */
+	static public double getAccel(Location loc1, Location loc2)
+	{
+		return (double)(loc2.getSpeed()-loc1.getSpeed()) / getElapsedTime(loc1, loc2);
+	}
+
+	// correction valid for Linz/Austria
+	/**
+	 * Get the corrected sealevel altitude
+	 * @param loc the location
+	 * @return the corrected sealevelaltitude
+	 */
+	static public int getCorrectedAltitude( Location loc )
+	{
+		return (int)loc.getAltitude()-50;
+	}
+
+	/**
+	 * set the sealevel altitude
+	 * @param loc the location
+	 * @param altitude the sealevel altitude
+	 */
+	static public void setCorrectedAltitude( Location loc, double altitude )
+	{
+		loc.setAltitude(altitude+50);
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
 		Date Format
 	-----------------------------------------------------------------------------------------------
 	 */
