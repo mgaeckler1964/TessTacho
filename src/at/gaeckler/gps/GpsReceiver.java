@@ -130,6 +130,8 @@ public class GpsReceiver
 							if( m_processor.onLocationChanged(newLocation) )
 							{
 								callback.onGpsFix(newLocation);
+								if( m_gpsLogger.getTrackGps())
+									m_gpsLogger.appendTrackPoint2XML(newLocation);
 							}
 						}
 					}

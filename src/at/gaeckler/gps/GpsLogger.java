@@ -473,11 +473,7 @@ public class GpsLogger
 
 	}
 
-	/**
-	 * Append a track point to the XML file in GPX format
-	 * @param loc the location to append
-	 */
-	public void appendTrackPoint2XML(Location loc)
+	void appendTrackPoint2XML(Location loc)	// package access only
 	{
 		try
 		{

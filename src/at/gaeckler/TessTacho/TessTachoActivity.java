@@ -32,6 +32,7 @@ package at.gaeckler.TessTacho;
 
 import at.gaeckler.gps.GpsActivity;
 import at.gaeckler.gps.GpsProcessor;
+import at.gaeckler.gps.GpsService;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -172,11 +173,16 @@ public class TessTachoActivity extends GpsActivity
 		}
 		loadPreferences();
 
-		createGpsTimer(FAST_GPS);
 		showSpeed( 0, 0 );
 		switchColorMode();
 	}
 
+	@Override
+	protected void onConfigureService()
+	{
+		super.onConfigureService();
+		getService().createGpsTimer(GpsService.FAST_GPS);
+	}
 	@Override
 	public boolean onCreateOptionsMenu( android.view.Menu menu )
 	{
@@ -458,13 +464,13 @@ public class TessTachoActivity extends GpsActivity
 	void setStatus( String text )
 	{
 		m_myStatus = text;
-		if( m_statusLabel != null )
+		if(m_statusLabel != null && isServiceBound())
 		{
-			m_statusLabel.setText(getString(
+			m_statusLabel.setText( getString(
 					R.string.accuracy_format,
 					text,
 					getAccuracy(),
-					getLocationFixCount(),
+					getService().getLocationFixCount(),
 					getNumLocations()
 			));
 		}

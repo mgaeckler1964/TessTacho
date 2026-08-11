@@ -33,20 +33,25 @@ package at.gaeckler.gps;
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
+import androidx.core.content.IntentCompat;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.os.Environment;
 import android.location.GnssStatus;
+import android.os.IBinder;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -85,86 +90,136 @@ public abstract class GpsActivity extends MyActivity
 
 	/*
 	-----------------------------------------------------------------------------------------------
-		Calibration
+		GPS Service
 	-----------------------------------------------------------------------------------------------
-	 */
-	private static final String	CALIBRATION_KEY = "calibrationMode";
-	private static final String	FIX_COUNT_KEY = "fixCount";
-	private static final String	SUM_LONGITUDE_KEY = "sumLongitude";
-	private static final String	SUM_LATITUDE_KEY = "sumLatitude";
-	private static final String	SUM_ALTITUDE_KEY = "sumAltitude";
-
-	private boolean	m_calibration = false;
-	private double	m_sumLongitude = 0;
-	private double	m_sumLatitude = 0;
-	private double	m_sumAltitude = 0;
-	private long	m_locationCalibrationCount = 0;
-
-	/**
-	 * Enable calibration if not yet enabled
-	 */
-	public  void enableCalibration()
+	*/
+	public void startGpsService()
 	{
-		if( !m_calibration )
+		Intent serviceIntent = new Intent(this, GpsService.class);
+		startForegroundService(serviceIntent);
+	}
+
+	public void stopGpsService()
+	{
+		Intent serviceIntent = new Intent(this, GpsService.class);
+		stopService(serviceIntent);
+	}
+
+	private GpsService m_service = null;
+	private boolean m_serviceBound = false;
+	public boolean isServiceBound()
+	{
+		return m_serviceBound && m_service != null;
+	}
+
+	private final ServiceConnection m_connection = new ServiceConnection()
+	{
+		@Override
+		public void onServiceConnected(ComponentName className, IBinder service)
 		{
-			m_calibration = true;
-			m_sumLongitude = 0;
-			m_sumLatitude = 0;
-			m_sumAltitude = 0;
-			m_locationCalibrationCount = 0;
+			GpsService.LocalBinder binder = (GpsService.LocalBinder) service;
+			m_service = binder.getService();
+			m_serviceBound = true;
+
+			onConfigureService();
+		}
+
+		@Override
+		public void onServiceDisconnected(ComponentName arg0)
+		{
+			m_serviceBound = false;
+		}
+	};
+
+	@Override
+	protected void onStart()
+	{
+		super.onStart();
+		Intent intent = new Intent(this, GpsService.class);
+		bindService(intent, m_connection, Context.BIND_AUTO_CREATE);
+	}
+	@Override
+	protected void onStop()
+	{
+		if (m_serviceBound)
+		{
+			unbindService(m_connection);
+			m_serviceBound = false;
+		}
+		super.onStop();
+	}
+
+	protected void onConfigureService()
+	{}
+
+	protected GpsService getService()
+	{
+		return m_service;
+	}
+
+	/*
+	-----------------------------------------------------------------------------------------------
+		Broad cast receiver
+	-----------------------------------------------------------------------------------------------
+	*/
+	private final BroadcastReceiver m_bcReceiver = new BroadcastReceiver()
+	{
+		@Override
+		public void onReceive(Context context, Intent intent)
+		{
+			if( GpsService.ACTION_GPS_DATA.equals(intent.getAction()) )
+			{
+				if( intent.hasExtra(GpsService.EXTRA_LOCATION) )
+				{
+					Location loc = IntentCompat.getParcelableExtra(intent, GpsService.EXTRA_LOCATION, Location.class);
+					if(loc != null)
+					{
+						onLocationChanged(loc);
+					}
+				}
+				else if( intent.hasExtra(GpsService.EXTRA_GPS_ENABLED) )
+				{
+					onLocationEnabled();
+				}
+				else if( intent.hasExtra(GpsService.EXTRA_GPS_DISABLED) )
+				{
+					onLocationDisabled();
+				}
+			}
+		}
+	};
+
+	// register the receiver
+	@Override
+	protected void onResume()
+	{
+		super.onResume();
+		IntentFilter filter = new IntentFilter(GpsService.ACTION_GPS_DATA);
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+		{
+			registerReceiver(m_bcReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+		}
+		else
+		{
+			// Für ältere Versionen bleibt es wie bisher
+			registerReceiver(m_bcReceiver, filter);
 		}
 	}
 
-	/**
-	 * Disable calibration
-	 */
-	protected void disableCalibration()
+	// unregister the receiver
+	@Override
+	protected void onPause()
 	{
-		m_calibration = false;
+		super.onPause();
+		unregisterReceiver(m_bcReceiver);
 	}
-
-	/**
-	 * Get the calibrated location
-	 * @param provider to be used for the location
-	 * @return the calibrated location (the mean of all gps location since calibration started)
-	 */
-	public Location getCalibratedLocation( String provider )
-	{
-		Location location = new Location(provider);
-		double longitude = m_sumLongitude/m_locationCalibrationCount;
-		double latitude = m_sumLatitude/m_locationCalibrationCount;
-		double altitude = m_sumAltitude/m_locationCalibrationCount;
-		location.setLongitude(longitude);
-		location.setLatitude(latitude);
-		location.setAltitude(altitude);
-
-		return location;
-	}
-
-	/**
-	 * Check if calibration is enabled
-	 * @return true if calibration is enabled, false otherwise
-	 */
-	protected boolean getCalibration()
-	{
-		return m_calibration;
-	}
-
-	/**
-	 * Get the number of location fixes
-	 * @return the number of location fixes
-	 */
-	public long getLocationFixCount()
-	{
-		return m_calibration ? m_locationCalibrationCount : m_gpsReceiver.getLocationFixCount();
-	}
-
 
 	/*
 	-----------------------------------------------------------------------------------------------
 		Permissions
 	-----------------------------------------------------------------------------------------------
-	 */
+	*/
 	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 
@@ -202,15 +257,21 @@ public abstract class GpsActivity extends MyActivity
 	private  boolean checkSafFolderPermissions( boolean writePermission )
 	{
 		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-		if (uriString == null)
+		if(uriString == null)
+		{
 			return false;
+		}
 		Uri treeUri = Uri.parse(uriString);
-		if (treeUri == null)
+		if(treeUri == null)
+		{
 			return false;
+		}
 
 		int modeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
-		if( writePermission )
+		if(writePermission)
+		{
 			modeFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+		}
 
 		try
 		{
@@ -257,8 +318,10 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public boolean checkWriteStoragePermission()
 	{
-		if( checkIsExternalStorageManager() )
+		if(checkIsExternalStorageManager())
+		{
 			return true;
+		}
 		return checkSafFolderPermissions(true) || ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
 	}
 
@@ -299,8 +362,10 @@ public abstract class GpsActivity extends MyActivity
 	{
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
 		{
-			if( hasStorageFolder() )
+			if(hasStorageFolder())
+			{
 				return RequestCode.OK;
+			}
 
 			if( !Environment.isExternalStorageManager() )
 			{
@@ -372,12 +437,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 
 	private LocationManager		m_locationManager = null;
-	private LocationListener	m_locationListener = null;
 	private GnssStatus.Callback	m_gnssStatusListener = null;
-	public static final int AUTO_GPS = 0;				// let the GPS system decide when to send new positions
-	public static final int FAST_GPS = 100;				// ask every 100ms for a new position
-	public static final int NORMAL_GPS = 1000;			// ask every Second for a new position
-	public static final int SLOW_GPS = 10000;			// ask every 10 seconds for a new position
 
 	/** Called when the activity is first created. */
 	@SuppressLint("MissingPermission")
@@ -389,43 +449,10 @@ public abstract class GpsActivity extends MyActivity
 		{
 			return;
 		}
-
-		if( savedInstanceState != null )
-		{
-			m_calibration = savedInstanceState.getBoolean(CALIBRATION_KEY, false);
-			m_locationCalibrationCount = savedInstanceState.getLong(FIX_COUNT_KEY, 0);
-			m_sumLongitude = savedInstanceState.getDouble(SUM_LONGITUDE_KEY, 0);
-			m_sumLatitude = savedInstanceState.getDouble(SUM_LATITUDE_KEY, 0);
-			m_sumAltitude = savedInstanceState.getDouble(SUM_ALTITUDE_KEY, 0);
-		}
-
-		m_gpsLogger = new GpsLogger(this, getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null) );
-		m_gpsReceiver = new GpsReceiver(m_processor, m_gpsLogger);
+		startGpsService();
 
 		// Acquire a reference to the system Location Manager
 		m_locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-		// Define a listener that responds to location updates
-		m_locationListener = new LocationListener()
-		{
-			@Override
-			public void onProviderEnabled(@NonNull String provider)
-			{
-				onLocationEnabled();
-			}
-
-			@Override
-			public void onProviderDisabled(@NonNull String provider)
-			{
-				onLocationDisabled();
-			}
-
-			@Override
-			public void onLocationChanged(@NonNull Location location)
-			{
-				lockLocationChanged( location, true );
-			}
-		};
 
 		m_gnssStatusListener = new GnssStatus.Callback()
 		{
@@ -455,31 +482,6 @@ public abstract class GpsActivity extends MyActivity
 			}
 		};
 		m_locationManager.registerGnssStatusCallback(m_gnssStatusListener, null);
-
-		// Register the listener with the Location Manager to receive location updates
-		m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, m_locationListener);
-		m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, m_locationListener);
-
-		createGpsTimer(NORMAL_GPS);
-	}
-
-	@Override
-	protected void  onSaveInstanceState( @NonNull Bundle outState )
-	{
-		super.onSaveInstanceState(outState);
-
-		outState.putLong(FIX_COUNT_KEY, m_locationCalibrationCount);
-		outState.putBoolean(CALIBRATION_KEY, m_calibration);
-		outState.putDouble(SUM_LONGITUDE_KEY, m_sumLongitude);
-		outState.putDouble(SUM_LATITUDE_KEY, m_sumLatitude);
-		outState.putDouble(SUM_ALTITUDE_KEY, m_sumAltitude);
-	}
-
-	@Override
-	protected void onStop()
-	{
-		m_gpsLogger.onStop();
-		super.onStop();
 	}
 
 	@Override
@@ -487,10 +489,9 @@ public abstract class GpsActivity extends MyActivity
 	{
 		if( m_locationManager != null )
 		{
-			m_locationManager.removeUpdates(m_locationListener);
 			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
 		}
-		m_gpsLogger.onDestroy();
+		stopGpsService();
 		super.onDestroy();
 	}
 
@@ -500,8 +501,8 @@ public abstract class GpsActivity extends MyActivity
 	-----------------------------------------------------------------------------------------------
 	 */
 	private static final int REQUEST_CODE_OPEN_DIRECTORY = 1234;
-	private static final String CONFIG_FILE = "prefs";
-	private static final String CONFIG_KEY = "storage_folder_uri";
+	public static final String CONFIG_FILE = "prefs";
+	public static final String CONFIG_KEY = "storage_folder_uri";
 
 	/**
 	 * Select the storage folder
@@ -542,7 +543,10 @@ public abstract class GpsActivity extends MyActivity
 							.edit()
 							.putString(CONFIG_KEY, uriString)
 							.apply();
-					m_gpsLogger.setUriString(uriString);
+					if( isServiceBound())
+					{
+						m_service.getGpsLogger().setUriString(uriString);
+					}
 
 					// Aktivität neu starten oder Initialisierung fortsetzen
 					recreate();
@@ -583,89 +587,10 @@ public abstract class GpsActivity extends MyActivity
 	-----------------------------------------------------------------------------------------------
 	 */
 
-	protected GpsLogger m_gpsLogger = null;
-	private GpsReceiver m_gpsReceiver = null;
-
-	private CountDownTimer		m_gpsTimer = null;
-	private int					m_gpsInterval = 0;
-
 	public abstract void onLocationEnabled();
 	public abstract void onLocationDisabled();
 	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
 	public abstract void onLocationChanged( Location newLocation );
-
-	/**
-	 * Create the GPS timer that periodically checks the location
-	 * @param interval the interval in milliseconds
-	 */
-	public void createGpsTimer( int interval )
-	{
-		if (m_gpsTimer!=null)
-		{
-			m_gpsTimer.cancel();
-		}
-		if( interval > 0 )
-		{
-			m_gpsInterval = interval;
-			m_gpsTimer = new CountDownTimer(100000000, interval) {
-
-				@Override
-				@SuppressLint("MissingPermission")
-				public void onTick(long millisUntilFinished) {
-					Location newLocation = m_locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-					if( newLocation != null )
-					{
-						m_gpsReceiver.lockLocationChanged(newLocation, true, (loc)->onLocationChanged( loc ));
-					}
-				}
-
-				@Override
-				public void onFinish() {
-					m_gpsTimer.start();
-				}
-			}.start();
-		}
-		else
-		{
-			m_gpsTimer = null;
-			m_gpsInterval = 0;
-		}
-	}
-
-	/**
-	 * Remove the GPS timer
-	 */
-	public void removeGpsTimer()
-	{
-		if (m_gpsTimer!=null)
-		{
-			m_gpsTimer.cancel();
-			m_gpsTimer = null;
-			m_gpsInterval = 0;
-		}
-	}
-
-	/**
-	 * Get the GPS interval
-	 * @return the interval in milliseconds
-	 */
-
-	public int getInterval()
-	{
-		return m_gpsInterval;
-	}
-
-	private void lockLocationChanged(@NonNull Location newLocation, boolean fromGPS )
-	{
-		if( m_calibration && fromGPS )
-		{
-			m_sumLongitude += newLocation.getLongitude();
-			m_sumLatitude += newLocation.getLatitude();
-			m_sumAltitude += newLocation.getAltitude();
-			m_locationCalibrationCount++;
-		}
-		m_gpsReceiver.lockLocationChanged(newLocation, fromGPS, this::onLocationChanged);
-	}
 
 	/**
 	 * Simulate a location fix
@@ -673,16 +598,45 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	protected void simulateLocationFix( @NonNull Location newLocation)
 	{
-		m_gpsReceiver.lockLocationChanged( newLocation, false, this::onLocationChanged);
+		if( isServiceBound() )
+		{
+			m_service.getGpsReceiver().lockLocationChanged(newLocation, false, this::onLocationChanged);
+		}
 	}
 
 	/*
 	-----------------------------------------------------------------------------------------------
-		Interface to the GpsProcessor
+		Interface to the Service
 	-----------------------------------------------------------------------------------------------
 	 */
 
-	private final GpsProcessor	m_processor = new GpsProcessor();
+	/**
+	 * Check if calibration is enabled
+	 * @return true if calibration is enabled, false otherwise
+	 */
+	public boolean getCalibration()
+	{
+		return isServiceBound() && m_service.getCalibration();
+	}
+
+	/**
+	 * get the track GPS flag
+	 * @return true, if we are logging the track points
+	 */
+	public boolean getTrackGps()
+	{
+		return isServiceBound() && m_service.getGpsLogger().getTrackGps();
+	}
+
+
+	/**
+	 * Get the GPS interval
+	 * @return the interval in milliseconds
+	 */
+	public int getInterval()
+	{
+		return isServiceBound() ? m_service.getInterval() : 0;
+	}
 
 	/**
 	 * Check if a location is available
@@ -690,16 +644,18 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public boolean getHasLocation()
 	{
-		return m_processor.hasLocation();
+		return isServiceBound() && m_service.hasLocation();
 	}
 
 	/**
 	 * Get the last location
 	 * @return the last location null if no location is available
 	 */
-	public Location getLastLocation()
+	public Location lastLocation()
 	{
-		return m_processor.lastLocation();
+		if( isServiceBound() )
+			return m_service.lastLocation();
+		return null;
 	}
 
 	/**
@@ -708,7 +664,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public boolean getIgnoreAccuracy()
 	{
-		return m_processor.getIgnoreAccuracy();
+		return isServiceBound() && m_service.getIgnoreAccuracy();
 	}
 
 	/**
@@ -716,7 +672,8 @@ public abstract class GpsActivity extends MyActivity
 	 * @param ignoreAcuracy the value	 */
 	public void setIgnoreAccuracy(boolean ignoreAcuracy)
 	{
-		m_processor.setIgnoreAccuracy( ignoreAcuracy );
+		if( isServiceBound() )
+			m_service.setIgnoreAccuracy( ignoreAcuracy );
 	}
 
 	/**
@@ -725,7 +682,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public double getAccuracy()
 	{
-		return m_processor.getAccuracy();
+		return isServiceBound() ? m_service.getAccuracy() : 0;
 	}
 
 	/**
@@ -734,7 +691,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public int getNumLocations()
 	{
-		return m_processor.getNumLocations();
+		return isServiceBound() ? m_service.getNumLocations() : 0;
 	}
 
 	/**
@@ -743,7 +700,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public double getCurBearing()
 	{
-		return m_processor.getCurBearing();
+		return isServiceBound() ? m_service.getCurBearing() : 0;
 	}
 
 	/**
@@ -752,7 +709,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public double getSpeed()
 	{
-		return m_processor.getSpeed();
+		return isServiceBound() ? m_service.getSpeed() : 0;
 	}
 
 	/**
@@ -761,7 +718,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public double getAccel()
 	{
-		return m_processor.getAccel();
+		return isServiceBound() ? m_service.getAccel() : 0;
 	}
 
 	/**
@@ -770,7 +727,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public String getAccelStr()
 	{
-		return m_processor.getAccelStr();
+		return isServiceBound() ? m_service.getAccelStr() : "";
 	}
 
 	/**
@@ -779,7 +736,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public double getResolution()
 	{
-		return m_processor.getResolution();
+		return isServiceBound() ? m_service.getResolution() : 0;
 	}
 
 	/**
@@ -788,7 +745,7 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public long getBrakeTime()
 	{
-		return m_processor.getBrakeTime();
+		return isServiceBound() ? m_service.getBrakeTime() : 0;
 	}
 
 	/**
@@ -798,7 +755,8 @@ public abstract class GpsActivity extends MyActivity
 	 */
 	public void setBrakeTime( long brakeTime )
 	{
-		m_processor.setBrakeTime(brakeTime);
+		if( isServiceBound() )
+			m_service.setBrakeTime(brakeTime);
 	}
 
 	// may be this is useful

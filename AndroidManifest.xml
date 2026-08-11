@@ -3,6 +3,9 @@
 
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
 	<application
 		android:icon="@drawable/icon"
 		android:label="@string/app_name"
@@ -10,6 +13,12 @@
 		android:enabled="true"
 		android:supportsRtl="false"
 		android:theme="@style/Theme.MyTheme">
+
+		<service
+			android:name="at.gaeckler.gps.GpsService"
+			android:foregroundServiceType="location"
+			android:enabled="true"
+			android:exported="false" />
 
 		<activity
 			android:icon="@drawable/icon"
