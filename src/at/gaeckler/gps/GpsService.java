@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -20,7 +21,6 @@ import androidx.core.app.NotificationCompat;
 
 public class GpsService extends Service implements LocationListener
 {
-	private static final String CHANNEL_ID = "GpsServiceChannel";
 	private LocationManager		m_locationManager = null;
 
 	private GpsLogger m_gpsLogger = null;
@@ -166,12 +166,45 @@ public class GpsService extends Service implements LocationListener
 		return m_calibration ? m_locationCalibrationCount : m_gpsReceiver.getLocationFixCount();
 	}
 
+	/*
+		--------------------------------------------------------------------------------------------
+			Notification
+		--------------------------------------------------------------------------------------------
+	*/
 
-	Notification createNotificationChannel()
+	private static final String CHANNEL_STR_ID = "GpsServiceChannel";
+	private static final String CHANNEL_NAME = "GPS Service Channel";
+	static final String FROM_NOTIFICATION = "FROM_NOTIFICATION";
+	private static final int CHANNEL_ID_NUMBER = 1;
+
+	private Notification createNotification( String newTitle, String newText, Class<?> target )
+	{
+		Intent intent = new Intent(this, target);
+		intent.putExtra(FROM_NOTIFICATION, true);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+		PendingIntent pendingIntent = PendingIntent.getActivity(
+				this,
+				0,
+				intent,
+				PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+		);
+
+		return new NotificationCompat.Builder(this, CHANNEL_STR_ID)
+			.setContentTitle(newTitle)
+			.setContentText(newText)
+			.setSmallIcon(android.R.drawable.ic_menu_mylocation)
+			.setContentIntent(pendingIntent)
+			.setOngoing(true)
+			.build()
+		;
+	}
+
+	private Notification createNotificationChannel()
 	{
 		NotificationChannel serviceChannel = new NotificationChannel(
-			CHANNEL_ID,
-			"GPS Service Channel",
+			CHANNEL_STR_ID,
+			CHANNEL_NAME,
 			NotificationManager.IMPORTANCE_LOW
 		);
 		NotificationManager manager = getSystemService(NotificationManager.class);
@@ -179,12 +212,20 @@ public class GpsService extends Service implements LocationListener
 		{
 			manager.createNotificationChannel(serviceChannel);
 		}
-		return  new NotificationCompat.Builder(this, CHANNEL_ID)
-			.setContentTitle("GPS Tracking active")
-			.setContentText("GPS Tracking active")
-			.setSmallIcon(android.R.drawable.ic_menu_mylocation)
-			.build()
-		;
+		// here we can not yet user translations => we use english literals and the activity
+		// will handle the translation
+		return createNotification("GPS Tracking active", "GPS Tracking active", GpsActivity.class );
+	}
+
+	/**
+	 * Update the notification
+	 * @param newTitle the new title
+	 * @param newText the new text
+	 */
+	public void updateNotification(String newTitle, String newText, Class<?> target)
+	{
+		NotificationManager manager = getSystemService(NotificationManager.class);
+		manager.notify(CHANNEL_ID_NUMBER, createNotification(newTitle, newText, target));
 	}
 
 	/*
@@ -208,7 +249,7 @@ public class GpsService extends Service implements LocationListener
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId)
 	{
-		startForeground(1, createNotificationChannel());
+		startForeground(CHANNEL_ID_NUMBER, createNotificationChannel());
 
 		try
 		{
@@ -270,13 +311,13 @@ public class GpsService extends Service implements LocationListener
 	}
 
 	@Override
-	public void onProviderEnabled(String provider)
+	public void onProviderEnabled(@NonNull String provider)
 	{
 		broadcastGpsEnabled(provider);
 	}
 
 	@Override
-	public void onProviderDisabled(String provider)
+	public void onProviderDisabled(@NonNull String provider)
 	{
 		broadcastGpsDisabled(provider);
 	}

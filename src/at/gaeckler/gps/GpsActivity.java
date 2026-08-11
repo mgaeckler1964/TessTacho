@@ -154,7 +154,7 @@ public abstract class GpsActivity extends MyActivity
 
 	protected GpsService getService()
 	{
-		return m_service;
+		return m_serviceBound ? m_service : null;
 	}
 
 	/*
@@ -217,6 +217,30 @@ public abstract class GpsActivity extends MyActivity
 
 	/*
 	-----------------------------------------------------------------------------------------------
+		Notifications
+	-----------------------------------------------------------------------------------------------
+	*/
+	@Override
+	protected void onNewIntent(Intent intent)
+	{
+		super.onNewIntent(intent);
+		setIntent( intent );
+		// Hier landet der Benutzer, wenn die App schon offen war
+		handleNotificationClick(intent);
+	}
+
+	private void handleNotificationClick(Intent intent)
+	{
+		if (intent != null && intent.getBooleanExtra(GpsService.FROM_NOTIFICATION, false))
+		{
+			onNotificationClick();
+		}
+	}
+	protected void onNotificationClick()
+	{}
+
+	/*
+	-----------------------------------------------------------------------------------------------
 		Permissions
 	-----------------------------------------------------------------------------------------------
 	*/
@@ -248,6 +272,15 @@ public abstract class GpsActivity extends MyActivity
 				new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
 				LOCATION_PERMISSION_REQUEST_CODE
 		);
+/*
+		if (Build.VERSION.SDK_INT >= 33)
+		{ // Android 13+
+			if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+			{
+				requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+			}
+		}
+ */
 		return true;
 	}
 
@@ -482,6 +515,8 @@ public abstract class GpsActivity extends MyActivity
 			}
 		};
 		m_locationManager.registerGnssStatusCallback(m_gnssStatusListener, null);
+
+		handleNotificationClick(getIntent());
 	}
 
 	@Override
@@ -628,7 +663,6 @@ public abstract class GpsActivity extends MyActivity
 		return isServiceBound() && m_service.getGpsLogger().getTrackGps();
 	}
 
-
 	/**
 	 * Get the GPS interval
 	 * @return the interval in milliseconds
@@ -642,7 +676,7 @@ public abstract class GpsActivity extends MyActivity
 	 * Check if a location is available
 	 * @return true if a location is available, false otherwise
 	 */
-	public boolean getHasLocation()
+	public boolean hasLocation()
 	{
 		return isServiceBound() && m_service.hasLocation();
 	}
