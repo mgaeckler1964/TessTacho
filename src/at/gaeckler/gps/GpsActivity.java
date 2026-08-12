@@ -526,7 +526,7 @@ public abstract class GpsActivity extends MyActivity
 		{
 			m_locationManager.unregisterGnssStatusCallback(m_gnssStatusListener);
 		}
-		stopGpsService();
+		//stopGpsService();
 		super.onDestroy();
 	}
 
