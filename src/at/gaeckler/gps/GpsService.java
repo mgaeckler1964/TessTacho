@@ -132,6 +132,7 @@ public class GpsService extends Service implements LocationListener
 		--------------------------------------------------------------------------------------------
 	*/
 	private boolean	m_calibration = false;
+	private int		m_prevInterval = 0;
 	private double	m_sumLongitude = 0;
 	private double	m_sumLatitude = 0;
 	private double	m_sumAltitude = 0;
@@ -144,6 +145,7 @@ public class GpsService extends Service implements LocationListener
 	{
 		if( !m_calibration )
 		{
+			m_prevInterval = m_gpsInterval;
 			m_calibration = true;
 			m_sumLongitude = 0;
 			m_sumLatitude = 0;
@@ -157,6 +159,8 @@ public class GpsService extends Service implements LocationListener
 	 */
 	public void disableCalibration()
 	{
+		if( m_calibration )
+			createGpsTimer(m_prevInterval);
 		m_calibration = false;
 	}
 
@@ -193,7 +197,12 @@ public class GpsService extends Service implements LocationListener
 	 */
 	public long getLocationFixCount()
 	{
-		return m_calibration ? m_locationCalibrationCount : m_gpsReceiver.getLocationFixCount();
+		if( m_calibration )
+			return m_locationCalibrationCount;
+		else if( m_gpsLogger.getTrackGps() )
+			return m_gpsLogger.getLocationFixCount();
+		else
+			return m_gpsReceiver.getLocationFixCount();
 	}
 
 	/*

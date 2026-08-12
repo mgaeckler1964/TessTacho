@@ -391,6 +391,7 @@ public class GpsLogger
 	private static final String XML_TRACK_FILE = ".temp.gpx";
 	private boolean			m_trackGps = false;
 	private long			m_startTime = 0;
+	private long			m_locationFixCount = 0;
 	private OutputStream	m_xmlFileOS = null;
 	private PrintWriter		m_xmlPos = null;
 
@@ -415,6 +416,7 @@ public class GpsLogger
 	{
 		m_trackGps = true;
 		m_startTime = 0;
+		m_locationFixCount = 0;
 	}
 
 	/**
@@ -424,6 +426,7 @@ public class GpsLogger
 	{
 		m_trackGps = false;
 		m_startTime = 0;
+		m_locationFixCount = 0;
 	}
 
 	/**
@@ -445,6 +448,14 @@ public class GpsLogger
 		return m_startTime;
 	}
 
+	/**
+	 * get the number of location fixes
+	 * @return the number of location fixes
+	 */
+	public long getLocationFixCount()
+	{
+		return m_locationFixCount;
+	}
 	private String getXmlTrackFileName()
 	{
 		return m_context.getPackageName() + XML_TRACK_FILE;
@@ -479,6 +490,7 @@ public class GpsLogger
 		{
 			if( m_startTime == 0 )
 				m_startTime = loc.getTime();
+			++m_locationFixCount;
 
 			if( m_xmlPos == null )
 			{
