@@ -135,8 +135,11 @@ public abstract class GpsActivity extends MyActivity
 	protected void onStart()
 	{
 		super.onStart();
-		Intent intent = new Intent(this, GpsService.class);
-		bindService(intent, m_connection, Context.BIND_AUTO_CREATE);
+		if( checkLocationPermission() )
+		{
+			Intent intent = new Intent(this, GpsService.class);
+			bindService(intent, m_connection, Context.BIND_AUTO_CREATE);
+		}
 	}
 	@Override
 	protected void onStop()
@@ -453,7 +456,13 @@ public abstract class GpsActivity extends MyActivity
 				// NOW you can call finish() because the app truly cannot work.
 				if(requestCode == LOCATION_PERMISSION_REQUEST_CODE)
 				{
-					showMessage(0, getLocalClassName(), "Fine Location Permission Missing!", true, null);
+					showMessage(
+						0,
+						getAppName(),
+						"Fine Location Permission Missing!",
+						true,
+						null
+					);
 				}
 				else
 				{

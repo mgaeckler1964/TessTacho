@@ -21,8 +21,8 @@ android {
 		applicationId "at.gaeckler.TessTacho"
 		minSdk 26
 		targetSdk 36
-		versionCode 10
-		versionName "3.8.4"
+		versionCode 11
+		versionName "3.8.12"
 		resValue "string", "app_version", "\"${versionName}\""
 	}
 
@@ -46,6 +46,12 @@ android {
 		options.compilerArgs << "-Xlint:deprecation"
 	}
 	buildTypes {
+		debug {
+			// Dies hängt ".debug" an deine ID an (z.B. at.gaeckler.gps.debug)
+			applicationIdSuffix ".debug"
+			// Optional: Hängt ein Suffix an den Namen in den Einstellungen an
+			versionNameSuffix "-debug"
+		}
 		release {
 			minifyEnabled true      // Entfernt nicht genutzten Code/Klassen aus Bibliotheken
 			shrinkResources true    // Wirft ungenutzte XMLs, Layouts & Bilder aus den Libs heraus

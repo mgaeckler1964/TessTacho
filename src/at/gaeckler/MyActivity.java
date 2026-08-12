@@ -117,4 +117,13 @@ public class MyActivity extends AppCompatActivity
 		}
 	}
 
+	/**
+	 * Get the application name
+	 * @return the application name
+	 */
+	public String getAppName()
+	{
+		return getApplicationInfo().loadLabel(getPackageManager()).toString();
+	}
+
 }
