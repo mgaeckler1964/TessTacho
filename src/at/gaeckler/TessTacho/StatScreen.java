@@ -32,8 +32,6 @@ package at.gaeckler.TessTacho;
 
 import at.gaeckler.TessTacho.R;
 import android.os.Bundle;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -92,7 +90,7 @@ public class StatScreen extends AppCompatActivity
         }
         {
         	Button btn = findViewById( R.id.quitButton );
-        	btn.setOnClickListener( (arg0 ) -> {finish();} );
+        	btn.setOnClickListener( arg -> finish() );
         }
 	}
 }

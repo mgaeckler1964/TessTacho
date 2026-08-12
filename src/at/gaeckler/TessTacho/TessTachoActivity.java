@@ -61,7 +61,6 @@ public class TessTachoActivity extends GpsActivity
 	private boolean					m_darkMode = false;
 	private TachoWidget				m_theTacho = null;
 	private String					m_myStatus = null;
-	private long					m_locationFixCount = 0;
 	private Location				m_distanceLocation = null;
 
 	private Location				m_brakeLocation = null;
@@ -101,10 +100,8 @@ public class TessTachoActivity extends GpsActivity
 
 	public  static final String			MAX_TACHO_SPEED_KEY = "maxTachoSpeed"; 
 	public  static final String			RESOLUTION_KEY = "gpsSpeedResolution";
-	
 	private static final String			DAY_DISTANCE_KEY = "dayDistance";
 	private static final String			TOTAL_DISTANCE_KEY = "totalDistance";
-	private static final String			LOCATION_FIX_COUNT_KEY = "locationFixCount";
 	private static final String			DARK_MODE_KEY = "darkMode";
 
 	private void showMessage( String title, String message )
@@ -165,8 +162,6 @@ public class TessTachoActivity extends GpsActivity
 				m_brakeLocation.setSpeed((float) savedInstanceState.getDouble(BRAKE_SPEED_KEY));
 			}
 			m_brakeDistance = savedInstanceState.getDouble(BRAKE_DISTANCE_KEY);
-
-			m_locationFixCount = savedInstanceState.getLong(LOCATION_FIX_COUNT_KEY);
 
 			m_brakeStatusLabel.setText(savedInstanceState.getString(BRAKE_STATUS_KEY));
 			m_accelStatusLabel.setText(savedInstanceState.getString(ACCEL_STATUS_KEY));
@@ -335,7 +330,6 @@ public class TessTachoActivity extends GpsActivity
 		outState.putDouble(MAX_BRAKE_KEY, m_maxBrake);
 		outState.putDouble(MAX_TACHO_SPEED_KEY, m_theTacho.getMaxTachoSpeed());
 		outState.putDouble(MAX_SPEED_KEY, m_theTacho.getMaxSpeed());
-		outState.putLong(LOCATION_FIX_COUNT_KEY, m_locationFixCount);
 
 		if (m_brakeLocation!=null)
 		{
@@ -359,7 +353,6 @@ public class TessTachoActivity extends GpsActivity
 	{
 		double	distance;
 
-		++m_locationFixCount;
 		setStatus( m_myStatus );
 
 		if( m_distanceLocation != null )

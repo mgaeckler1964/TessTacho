@@ -39,6 +39,8 @@ import android.graphics.Paint.Cap;
 import android.util.AttributeSet;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+
 class TachoPos
 {
 	public double xPos, yPos;
@@ -139,17 +141,13 @@ public class TachoWidget extends View
 
 	private double getAngleForSpeed( double speed )
 	{
-		final double angle = s_minAngle - speed*s_maxAngle / m_maxTachoSpeed;
-		
-		return angle;
+		return s_minAngle - speed*s_maxAngle / m_maxTachoSpeed;
 	}
 	private TachoPos getCirclePosForSpeed( double speed )
 	{
 		double angle = getAngleForSpeed( speed );
 		
-		TachoPos pos = new TachoPos( Math.cos( angle ), Math.sin( angle ));
-		
-		return pos;
+		return new TachoPos( Math.cos( angle ), Math.sin( angle ));
 	}
 	private TachoPos transferToScreen( TachoPos pos, double factor )
 	{
@@ -167,10 +165,7 @@ public class TachoWidget extends View
 	}
 	private TachoPos getCirclePosForSpeed( double speed, double factor )
 	{
-		TachoPos pos = getCirclePosForSpeed( speed );
-		pos = transferToScreen( pos, factor );
-
-		return pos;
+		return transferToScreen( getCirclePosForSpeed( speed ), factor );
 	}
 	public TachoWidget(Context context)
 	{
@@ -187,8 +182,8 @@ public class TachoWidget extends View
 	{
 		m_tachoWidth = MeasureSpec.getSize(widthMeasureSpec);
 		m_tachoHeight = MeasureSpec.getSize(heightMeasureSpec);
-		m_centerX = m_tachoWidth/2;
-		m_centerY = m_tachoHeight/2;
+		m_centerX = m_tachoWidth/2.0;
+		m_centerY = m_tachoHeight/2.0;
 		m_tachoRadius = Math.min( m_centerX, m_centerY);
 
 		m_labelPaint.setTextSize((float)(m_tachoRadius * 0.1));
@@ -197,7 +192,7 @@ public class TachoWidget extends View
 		setMeasuredDimension( m_tachoWidth, m_tachoHeight );
 	}
 	@Override
-	protected void onDraw(Canvas canvas)
+	protected void onDraw(@NonNull Canvas canvas)
 	{
 		double speed;
 		double textOffset = m_labelPaint.getTextSize()/2.0;
