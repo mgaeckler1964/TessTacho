@@ -355,7 +355,7 @@ public class TessTachoActivity extends GpsActivity
 	}
 	
 	@Override
-	public void onLocationChanged( Location newLocation )
+	protected void onLocationChanged( Location newLocation )
 	{
 		double	distance;
 
@@ -477,16 +477,16 @@ public class TessTachoActivity extends GpsActivity
 	}
 
 	@Override
-	public void onLocationEnabled() {
+	protected void onLocationEnabled() {
 		setStatus( getString(R.string.gpsEnabled) );
 	}
 	@Override
-	public void onLocationDisabled() {
+	protected void onLocationDisabled() {
 		setStatus( getString(R.string.gpsDisabled) );
 		showSpeed( 0, 0 );
 	}
 	@Override
-	public void onGnssStatusChanged2(int event, GnssStatus status)
+	protected void onGnssStatusChanged2(int event, GnssStatus status)
 	{
 		if(event == GPS_EVENT_STARTED)
 		{

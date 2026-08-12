@@ -536,8 +536,8 @@ public abstract class GpsActivity extends MyActivity
 	-----------------------------------------------------------------------------------------------
 	 */
 	private static final int REQUEST_CODE_OPEN_DIRECTORY = 1234;
-	public static final String CONFIG_FILE = "prefs";
-	public static final String CONFIG_KEY = "storage_folder_uri";
+	static final String CONFIG_FILE = "prefs";
+	static final String CONFIG_KEY = "storage_folder_uri";
 
 	/**
 	 * Select the storage folder
@@ -596,6 +596,7 @@ public abstract class GpsActivity extends MyActivity
 
 	/**
 	 * Select the public document folder as storage folder
+	 * by remove the selected saf folder from the shared preferences
 	 */
 	public void selectPublicFolder()
 	{
@@ -622,10 +623,10 @@ public abstract class GpsActivity extends MyActivity
 	-----------------------------------------------------------------------------------------------
 	 */
 
-	public abstract void onLocationEnabled();
-	public abstract void onLocationDisabled();
-	public abstract void onGnssStatusChanged2(int event, GnssStatus status);
-	public abstract void onLocationChanged( Location newLocation );
+	protected abstract void onLocationEnabled();
+	protected abstract void onLocationDisabled();
+	protected abstract void onGnssStatusChanged2(int event, GnssStatus status);
+	protected abstract void onLocationChanged( Location newLocation );
 
 	/**
 	 * Simulate a location fix

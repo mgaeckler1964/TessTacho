@@ -1,7 +1,9 @@
 /*
 		Project:		GPS
 		Module:			GpsProcessor.java
-		Description:	The common location processor for all GPS apps
+		Description:	The common location processor for all GPS apps.The
+						processor calculates the current speed, acceleration
+						and bearing
 		Author:			Martin Gäckler
 		Address:		Hofmannsthalweg 14, A-4030 Linz
 		Web:			https://www.gaeckler.at/

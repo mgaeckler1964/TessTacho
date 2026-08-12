@@ -1,7 +1,7 @@
 /*
 		Project:		GPS
 		Module:			GpsUtils.java
-		Description:	Some useful utils
+		Description:	Some useful utils GPS
 		Author:			Martin Gäckler
 		Address:		Hofmannsthalweg 14, A-4030 Linz
 		Web:			https://www.gaeckler.at/

@@ -1,7 +1,8 @@
 /*
 		Project:		GPS
 		Module:			GpsReceiver.java
-		Description:	Get GPS Positions from any source
+		Description:	Get GPS Positions from any source,the GpsReceiver
+						tries to remove noise from the GPS-signal
 		Author:			Martin Gäckler
 		Address:		Hofmannsthalweg 14, A-4030 Linz
 		Web:			https://www.gaeckler.at/
