@@ -378,19 +378,21 @@ public class GpsService extends Service implements LocationListener
 	@Override
 	public void onProviderEnabled(@NonNull String provider)
 	{
-		if( provider == LocationManager.GPS_PROVIDER )
+		if( LocationManager.GPS_PROVIDER.equals(provider) )
+		{
 			m_gpsEnabled = true;
-
-		broadcastGpsEnabled(provider);
+			broadcastGpsEnabled(provider);
+		}
 	}
 
 	@Override
 	public void onProviderDisabled(@NonNull String provider)
 	{
-		if( provider == LocationManager.GPS_PROVIDER )
+		if( LocationManager.GPS_PROVIDER.equals(provider) )
+		{
 			m_gpsEnabled = false;
-
-		broadcastGpsDisabled(provider);
+			broadcastGpsDisabled(provider);
+		}
 	}
 
 	/*
