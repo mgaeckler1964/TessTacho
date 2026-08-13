@@ -93,6 +93,11 @@ public abstract class GpsActivity extends MyActivity
 		GPS Service
 	-----------------------------------------------------------------------------------------------
 	*/
+
+	private GpsService	m_service = null;
+	private boolean		m_serviceBound = false;
+	private boolean		m_serviceConfigured = false;
+
 	public void startGpsService()
 	{
 		Intent serviceIntent = new Intent(this, GpsService.class);
@@ -105,8 +110,6 @@ public abstract class GpsActivity extends MyActivity
 		stopService(serviceIntent);
 	}
 
-	private GpsService m_service = null;
-	private boolean m_serviceBound = false;
 	public boolean isServiceBound()
 	{
 		return m_serviceBound && m_service != null;
@@ -117,11 +120,17 @@ public abstract class GpsActivity extends MyActivity
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service)
 		{
+			if( m_serviceBound )
+				return;					// nothing to do
+
 			GpsService.LocalBinder binder = (GpsService.LocalBinder) service;
 			m_service = binder.getService();
 			m_serviceBound = true;
-
-			onConfigureService();
+			if( !m_serviceConfigured )
+			{
+				onConfigureService();
+				m_serviceConfigured = true;
+			}
 		}
 
 		@Override
