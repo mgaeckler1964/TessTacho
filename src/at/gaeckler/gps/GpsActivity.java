@@ -182,10 +182,12 @@ public abstract class GpsActivity extends MyActivity
 				}
 				else if( intent.hasExtra(GpsService.EXTRA_GPS_ENABLED) )
 				{
+					m_gpsEnabled = true;
 					onLocationEnabled();
 				}
 				else if( intent.hasExtra(GpsService.EXTRA_GPS_DISABLED) )
 				{
+					m_gpsEnabled = false;
 					onLocationDisabled();
 				}
 			}
@@ -631,6 +633,12 @@ public abstract class GpsActivity extends MyActivity
 		Basic GPS handling
 	-----------------------------------------------------------------------------------------------
 	 */
+
+	private boolean m_gpsEnabled = false;
+	protected boolean isGpsEnabled()
+	{
+		return m_gpsEnabled;
+	}
 
 	protected abstract void onLocationEnabled();
 	protected abstract void onLocationDisabled();

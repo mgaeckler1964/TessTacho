@@ -65,6 +65,16 @@ public class GpsService extends Service implements LocationListener
 
 	private CountDownTimer		m_gpsTimer = null;
 	private int					m_gpsInterval = 0;
+	private boolean				m_gpsEnabled = false;
+
+	/**
+	 * Get the GPS status
+	 * @return true if GPS is enabled, false otherwise
+	 */
+	public boolean isGpsEnabled()
+	{
+		return m_gpsEnabled;
+	}
 
 	/**
 	 * Create the GPS timer that periodically checks the location
@@ -285,6 +295,21 @@ public class GpsService extends Service implements LocationListener
 		m_gpsReceiver = new GpsReceiver(m_processor, m_gpsLogger);
 	}
 
+	private void checkInitialGpsStatus()
+	{
+		LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+		if (locationManager != null) {
+			boolean isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+			if (isGpsEnabled)
+			{
+				onProviderEnabled(LocationManager.GPS_PROVIDER);
+			}
+			else
+			{
+				onProviderDisabled(LocationManager.GPS_PROVIDER);
+			}
+		}
+	}
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId)
 	{
@@ -295,6 +320,7 @@ public class GpsService extends Service implements LocationListener
 			m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, this);
 			m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, this);
 			createGpsTimer(AUTO_GPS);
+			checkInitialGpsStatus();
 		}
 		catch (SecurityException e)
 		{
@@ -352,12 +378,18 @@ public class GpsService extends Service implements LocationListener
 	@Override
 	public void onProviderEnabled(@NonNull String provider)
 	{
+		if( provider == LocationManager.GPS_PROVIDER )
+			m_gpsEnabled = true;
+
 		broadcastGpsEnabled(provider);
 	}
 
 	@Override
 	public void onProviderDisabled(@NonNull String provider)
 	{
+		if( provider == LocationManager.GPS_PROVIDER )
+			m_gpsEnabled = false;
+
 		broadcastGpsDisabled(provider);
 	}
 
