@@ -49,6 +49,9 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class GpsService extends Service implements LocationListener
 {
 	private LocationManager		m_locationManager = null;
@@ -442,6 +445,23 @@ public class GpsService extends Service implements LocationListener
 
 		// Die Nachricht ins System werfen
 		sendBroadcast(intent);
+	}
+
+	/*
+		--------------------------------------------------------------------------------------------
+		Track point
+		--------------------------------------------------------------------------------------------
+	*/
+	private final List<Location> m_trackPoints = new ArrayList<>();
+
+	public void addTrackPoint(Location point)
+	{
+		m_trackPoints.add(point);
+	}
+
+	public List<Location> getTrackPoints()
+	{
+		return m_trackPoints;
 	}
 
 	/*
