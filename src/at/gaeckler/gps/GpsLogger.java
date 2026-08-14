@@ -108,6 +108,21 @@ public class GpsLogger
 		m_uriString = uriString;
 	}
 
+	private String getAppName()
+	{
+		try
+		{
+			// Holt das Label der App (app_name aus dem Manifest)
+			return m_context.getPackageManager()
+					.getApplicationLabel(m_context.getApplicationInfo())
+					.toString().replace(" ", "_");
+		}
+		catch (Exception e)
+		{
+			return m_context.getPackageName();
+		}
+	}
+
 	private File getExternalFile(boolean pub, String fileName )
 	{
 		File dir = pub
@@ -115,6 +130,14 @@ public class GpsLogger
 				: m_context.getExternalFilesDir(null);
 
 		assert dir != null;
+
+		if( !dir.exists() )
+		{
+			dir.mkdir();
+		}
+
+		String appDir = getAppName();
+		dir = new File(dir, appDir);
 		if( !dir.exists() )
 		{
 			dir.mkdir();
