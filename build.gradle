@@ -19,10 +19,13 @@ android {
 
 	defaultConfig {
 		applicationId "at.gaeckler.TessTacho"
-		minSdk 26
+		// 21: Technisches Minimum (AppCompat/MultiDex).
+		// 26: APK wird kleiner (weniger Legacy-Support).
+		// 28: APK wird größer (unkomprimierte native Libs), dafür schnellerer Start & weniger RAM-Verbrauch.
+		minSdk 28
 		targetSdk 36
-		versionCode 11
-		versionName "3.8.12"
+		versionCode 12
+		versionName "3.8.14"
 		resValue "string", "app_version", "\"${versionName}\""
 	}
 

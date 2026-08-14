@@ -292,13 +292,13 @@ public class TessTachoActivity extends GpsActivity
 
 	private void savePreferences()
 	{
-		SharedPreferences settings = getSharedPreferences(CONFIGURATION, 0);
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance );
-		editor.putFloat( START_SPEED_KEY, (float)m_startSpeed );
-		editor.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed );
-		editor.putBoolean(DARK_MODE_KEY, m_darkMode);
-		editor.apply();
+		getSharedPreferences(CONFIGURATION, 0).edit()
+			.putFloat( TOTAL_DISTANCE_KEY, (float)m_totalDistance )
+			.putFloat( START_SPEED_KEY, (float)m_startSpeed )
+			.putFloat( TARGET_SPEED_KEY, (float)m_targetSpeed )
+			.putBoolean(DARK_MODE_KEY, m_darkMode)
+			.apply()
+		;
 	}
 
 	private void loadPreferences()
@@ -457,27 +457,39 @@ public class TessTachoActivity extends GpsActivity
 	void setStatus( String text )
 	{
 		m_myStatus = text;
-		if(m_statusLabel != null && isServiceBound())
+		if(m_statusLabel != null )
 		{
-			m_statusLabel.setText( getString(
-					R.string.accuracy_format,
-					text,
-					getAccuracy(),
-					getService().getLocationFixCount(),
-					getNumLocations()
-			));
+			if(isServiceBound() && isGpsEnabled())
+			{
+				GpsService service = getService();
+				m_statusLabel.setText(getString(
+						R.string.accuracy_format,
+						text,
+						service.getAccuracy(),
+						service.getLocationFixCount(),
+						service.getNumLocations()
+				));
+			}
+			else
+			{
+				m_statusLabel.setText(text);
+			}
 		}
 	}
 
 	@Override
-	protected void onLocationEnabled() {
+	protected void onLocationEnabled()
+	{
 		setStatus( getString(R.string.gpsEnabled) );
 	}
+
 	@Override
-	protected void onLocationDisabled() {
+	protected void onLocationDisabled()
+	{
 		setStatus( getString(R.string.gpsDisabled) );
 		showSpeed( 0, 0 );
 	}
+
 	@Override
 	protected void onGnssStatusChanged2(int event, GnssStatus status)
 	{
