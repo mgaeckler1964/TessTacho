@@ -42,6 +42,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.util.Log;
@@ -60,15 +61,11 @@ public class GpsService extends Service implements LocationListener
 	private GpsReceiver m_gpsReceiver = null;
 	private final GpsProcessor	m_processor = new GpsProcessor();
 
-
-	public static final int AUTO_GPS = 0;				// let the GPS system decide when to send new positions
-	public static final int FAST_GPS = 100;				// ask every 100ms for a new position
-	public static final int NORMAL_GPS = 1000;			// ask every Second for a new position
-	public static final int SLOW_GPS = 10000;			// ask every 10 seconds for a new position
-
-	private CountDownTimer		m_gpsTimer = null;
-	private int					m_gpsInterval = 0;
-	private boolean				m_gpsEnabled = false;
+// -------------------------------------------------------------------------------------------------
+// region Common GPS
+// -------------------------------------------------------------------------------------------------
+	private boolean		m_gpsEnabled = false;
+	private boolean		m_extendedGPS = false;
 
 	/**
 	 * Get the GPS status
@@ -79,6 +76,53 @@ public class GpsService extends Service implements LocationListener
 		return m_gpsEnabled;
 	}
 
+	/**
+	 * Get the extended GPS status
+	 * @return true if extended GPS is enabled, false otherwise
+	 */
+	public boolean isExtendedGpsEnabled()
+	{
+		return m_extendedGPS;
+	}
+
+	/**
+	 * Enable extended GPS with fused and network providers
+	 */
+	@SuppressLint("MissingPermission")
+	public void useExtendedGPS()
+	{
+		m_extendedGPS = true;
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+		{
+			m_locationManager.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 50, (float) 0.1, this);
+		}
+		m_locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 50, (float) 0.1, this);
+	}
+
+	/**
+	 * Use Standard GPS with gps and passive provider
+	 */
+	@SuppressLint("MissingPermission")
+	public void useStandardGPS()
+	{
+		m_locationManager.removeUpdates(this);
+		m_extendedGPS = false;
+
+		m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, this);
+		m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, this);
+	}
+// endregion
+
+// -------------------------------------------------------------------------------------------------
+//region GPS Timer
+// -------------------------------------------------------------------------------------------------
+	public static final int AUTO_GPS = 0;				// let the GPS system decide when to send new positions
+	public static final int FAST_GPS = 100;				// ask every 100ms for a new position
+	public static final int NORMAL_GPS = 1000;			// ask every Second for a new position
+	public static final int SLOW_GPS = 10000;			// ask every 10 seconds for a new position
+
+	private CountDownTimer		m_gpsTimer = null;
+	private int					m_gpsInterval = 0;
 	/**
 	 * Create the GPS timer that periodically checks the location
 	 * @param interval the interval in milliseconds
@@ -138,12 +182,11 @@ public class GpsService extends Service implements LocationListener
 	{
 		return m_gpsInterval;
 	}
+// endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-			Calibration
-		--------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+// region Calibration
+// -------------------------------------------------------------------------------------------------
 	private boolean	m_calibration = false;
 	private int		m_prevInterval = 0;
 	private double	m_sumLongitude = 0;
@@ -217,12 +260,11 @@ public class GpsService extends Service implements LocationListener
 		else
 			return m_gpsReceiver.getLocationFixCount();
 	}
+// endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-			Notification
-		--------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+// region  Notification
+// -------------------------------------------------------------------------------------------------
 
 	private static final String CHANNEL_STR_ID = "GpsServiceChannel";
 	private static final String CHANNEL_NAME = "GPS Service Channel";
@@ -279,12 +321,11 @@ public class GpsService extends Service implements LocationListener
 		NotificationManager manager = getSystemService(NotificationManager.class);
 		manager.notify(CHANNEL_ID_NUMBER, createNotification(newTitle, newText, target));
 	}
+// endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-			The Service Interface
-		--------------------------------------------------------------------------------------------
-	 */
+// -------------------------------------------------------------------------------------------------
+// region The Service Interface
+// -------------------------------------------------------------------------------------------------
 	@SuppressLint("MissingPermission")
 	@Override
 	public void onCreate()
@@ -313,6 +354,7 @@ public class GpsService extends Service implements LocationListener
 			}
 		}
 	}
+
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId)
 	{
@@ -320,8 +362,8 @@ public class GpsService extends Service implements LocationListener
 
 		try
 		{
-			m_locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50, (float) 0.1, this);
-			m_locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 50, (float) 0.1, this);
+			useStandardGPS();
+
 			createGpsTimer(AUTO_GPS);
 			checkInitialGpsStatus();
 		}
@@ -359,12 +401,11 @@ public class GpsService extends Service implements LocationListener
 	{
 		return m_binder;
 	}
+// endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-			The Location Listener Interface
-		--------------------------------------------------------------------------------------------
-	 */
+// -------------------------------------------------------------------------------------------------
+// region The Location Listener Interface
+// -------------------------------------------------------------------------------------------------
 	@Override
 	public void onLocationChanged(@NonNull Location newLocation)
 	{
@@ -397,14 +438,11 @@ public class GpsService extends Service implements LocationListener
 			broadcastGpsDisabled(provider);
 		}
 	}
+// endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-			broadcast
-		--------------------------------------------------------------------------------------------
-	*/
-
-	// send a broad cast message
+// -------------------------------------------------------------------------------------------------
+//region Broadcast
+// -------------------------------------------------------------------------------------------------
 	public static final String ACTION_GPS_DATA = "at.gaeckler.gps.NEW_LOCATION";
 	public static final String EXTRA_LOCATION = "EXTRA_LOCATION";
 	public static final String EXTRA_GPS_ENABLED = "EXTRA_GPS_ENABLED";
@@ -446,12 +484,11 @@ public class GpsService extends Service implements LocationListener
 		// Die Nachricht ins System werfen
 		sendBroadcast(intent);
 	}
+// endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-		Track point
-		--------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+//region Track points
+// -------------------------------------------------------------------------------------------------
 	private final List<Location> m_trackPoints = new ArrayList<>();
 
 	public void addTrackPoint(Location point)
@@ -463,12 +500,11 @@ public class GpsService extends Service implements LocationListener
 	{
 		return m_trackPoints;
 	}
+//endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-		receiver and logger
-		--------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+//region receiver and logger
+// -------------------------------------------------------------------------------------------------
 	public GpsReceiver getGpsReceiver()
 	{
 		return m_gpsReceiver;
@@ -478,13 +514,11 @@ public class GpsService extends Service implements LocationListener
 	{
 		return m_gpsLogger;
 	}
+//endregion
 
-	/*
-		--------------------------------------------------------------------------------------------
-			Interface to the GpsProcessor
-		--------------------------------------------------------------------------------------------
-	 */
-
+// -------------------------------------------------------------------------------------------------
+//region Interface to the GpsProcessor
+// -------------------------------------------------------------------------------------------------
 	/**
 	 * Check if a location is available
 	 * @return true if a location is available, false otherwise
@@ -601,4 +635,5 @@ public class GpsService extends Service implements LocationListener
 	{
 		m_processor.setBrakeTime(brakeTime);
 	}
+//endregion
 }

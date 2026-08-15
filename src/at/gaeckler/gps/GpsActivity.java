@@ -71,11 +71,9 @@ public abstract class GpsActivity extends MyActivity
 	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
 	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Helper
-	-----------------------------------------------------------------------------------------------
-	 */
+// -------------------------------------------------------------------------------------------------
+// region Helper
+// -------------------------------------------------------------------------------------------------
 	/**
 	 * Check if the given value is between the given min and max
 	 * @param min the minimum value
@@ -87,12 +85,11 @@ public abstract class GpsActivity extends MyActivity
 	{
 		return ( min <= cur && cur <= max );
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		GPS Service
-	-----------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+// region GPS Service
+// -------------------------------------------------------------------------------------------------
 
 	private GpsService	m_service = null;
 	private boolean		m_serviceBound = false;
@@ -168,12 +165,11 @@ public abstract class GpsActivity extends MyActivity
 	{
 		return m_serviceBound ? m_service : null;
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Broad cast receiver
-	-----------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+// region Broad cast receiver
+// -------------------------------------------------------------------------------------------------
 	private final BroadcastReceiver m_bcReceiver = new BroadcastReceiver()
 	{
 		@Override
@@ -228,12 +224,11 @@ public abstract class GpsActivity extends MyActivity
 		super.onPause();
 		unregisterReceiver(m_bcReceiver);
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Notifications
-	-----------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+// region Notifications
+// -------------------------------------------------------------------------------------------------
 	@Override
 	protected void onNewIntent(Intent intent)
 	{
@@ -252,12 +247,11 @@ public abstract class GpsActivity extends MyActivity
 	}
 	protected void onNotificationClick()
 	{}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Permissions
-	-----------------------------------------------------------------------------------------------
-	*/
+// -------------------------------------------------------------------------------------------------
+// region Permissions
+// -------------------------------------------------------------------------------------------------
 	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 
@@ -482,12 +476,11 @@ public abstract class GpsActivity extends MyActivity
 			}
 		}
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Basic Activity implementation
-	-----------------------------------------------------------------------------------------------
-	 */
+// -------------------------------------------------------------------------------------------------
+// region Basic Activity implementation
+// -------------------------------------------------------------------------------------------------
 
 	private LocationManager		m_locationManager = null;
 	private GnssStatus.Callback	m_gnssStatusListener = null;
@@ -549,12 +542,11 @@ public abstract class GpsActivity extends MyActivity
 		//stopGpsService();
 		super.onDestroy();
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Storage Access Framework (SAF)
-	-----------------------------------------------------------------------------------------------
-	 */
+// -------------------------------------------------------------------------------------------------
+// region Storage Access Framework (SAF)
+// -------------------------------------------------------------------------------------------------
 	private static final int REQUEST_CODE_OPEN_DIRECTORY = 1234;
 	static final String CONFIG_FILE = "prefs";
 	static final String CONFIG_KEY = "storage_folder_uri";
@@ -636,13 +628,11 @@ public abstract class GpsActivity extends MyActivity
 
 		return uriString != null;
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Basic GPS handling
-	-----------------------------------------------------------------------------------------------
-	 */
-
+// -------------------------------------------------------------------------------------------------
+// region Basic GPS handling
+// -------------------------------------------------------------------------------------------------
 	private boolean m_gpsEnabled = false;
 	protected boolean isGpsEnabled()
 	{
@@ -665,12 +655,19 @@ public abstract class GpsActivity extends MyActivity
 			m_service.getGpsReceiver().lockLocationChanged(newLocation, false, this::onLocationChanged);
 		}
 	}
+//endregion
 
-	/*
-	-----------------------------------------------------------------------------------------------
-		Interface to the Service
-	-----------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+// region Interface to the Service
+// -------------------------------------------------------------------------------------------------
+	/**
+	 * Get the extended GPS status
+	 * @return true if extended GPS is enabled, false otherwise
 	 */
+	public boolean isExtendedGpsEnabled()
+	{
+		return isServiceBound() && m_service.isExtendedGpsEnabled();
+	}
 
 	/**
 	 * Check if calibration is enabled
@@ -819,6 +816,7 @@ public abstract class GpsActivity extends MyActivity
 		if( isServiceBound() )
 			m_service.setBrakeTime(brakeTime);
 	}
+//endregion
 
 	// may be this is useful
 	//public boolean isDarkModeActive(Context context)
