@@ -33,6 +33,7 @@ package at.gaeckler.gps;
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.IntentCompat;
 
 import android.Manifest;
@@ -159,7 +160,11 @@ public abstract class GpsActivity extends MyActivity
 	}
 
 	protected void onConfigureService()
-	{}
+	{
+		m_service.getGpsLogger().setUriString(
+			getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null)
+		);
+	}
 
 	protected GpsService getService()
 	{
@@ -254,6 +259,27 @@ public abstract class GpsActivity extends MyActivity
 // -------------------------------------------------------------------------------------------------
 	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
+
+	/**
+	 * Check if the location permission is granted
+	 * @return true if the location permission is granted, false otherwise
+	 */
+	public boolean checkNotificationPermission()
+	{
+		return NotificationManagerCompat.from(this).areNotificationsEnabled();
+	}
+
+	/**
+	 * Open the notification permission
+	 */
+	public void openNotificationSettings()
+	{
+		Intent intent = new Intent();
+		// Direkt zu den Benachrichtigungskanälen der App
+		intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+		intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+		startActivity(intent);
+	}
 
 	/**
 	 * Check if the location permission is granted
@@ -613,9 +639,13 @@ public abstract class GpsActivity extends MyActivity
 	public void selectPublicFolder()
 	{
 		getSharedPreferences(CONFIG_FILE, MODE_PRIVATE)
-				.edit()
-				.remove(CONFIG_KEY)
-				.apply();
+			.edit()
+			.remove(CONFIG_KEY)
+			.apply();
+		if( isServiceBound() )
+		{
+			getService().getGpsLogger().setUriString(null);
+		}
 	}
 
 	/**
@@ -727,7 +757,8 @@ public abstract class GpsActivity extends MyActivity
 
 	/**
 	 * Set if the accuracy of a GPS fix should be ignored
-	 * @param ignoreAcuracy the value	 */
+	 * @param ignoreAcuracy the value
+	 */
 	public void setIgnoreAccuracy(boolean ignoreAcuracy)
 	{
 		if( isServiceBound() )

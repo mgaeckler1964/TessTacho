@@ -119,7 +119,7 @@ public class GpsLogger
 		}
 	}
 
-	private File getExternalFile(boolean pub, String fileName )
+	private File getExternalFile(boolean pub, String fileName, boolean createDir )
 	{
 		File dir = pub
 				? Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
@@ -129,6 +129,9 @@ public class GpsLogger
 
 		if( !dir.exists() )
 		{
+			if( !createDir )
+				return null;
+
 			dir.mkdir();
 		}
 
@@ -136,6 +139,9 @@ public class GpsLogger
 		dir = new File(dir, appDir);
 		if( !dir.exists() )
 		{
+			if( !createDir )
+				return null;
+
 			dir.mkdir();
 		}
 
@@ -172,8 +178,11 @@ public class GpsLogger
 		}
 
 		// fall back for old androids and private storage
-		File file = getExternalFile(pub, filename);
-		return new FileInputStream(file);
+		File file = getExternalFile(pub, filename, false);
+		if( file != null && file.exists() )
+			return new FileInputStream(file);
+
+		throw new IOException();
 	}
 
 	/**
@@ -236,7 +245,7 @@ public class GpsLogger
 		}
 
 		// fall back for old androids or private storage
-		File file = getExternalFile(pub, filename);
+		File file = getExternalFile(pub, filename, true);
 		return new FileOutputStream(file, append);
 	}
 	/**
@@ -253,8 +262,8 @@ public class GpsLogger
 
 	private void deleteLocalFile(String filename)
 	{
-		File file = getExternalFile(true, filename);
-		if( file.exists() && file.delete())
+		File file = getExternalFile(true, filename, false);
+		if( file == null || (file.exists() && file.delete()) )
 		{
 			return;
 		}
