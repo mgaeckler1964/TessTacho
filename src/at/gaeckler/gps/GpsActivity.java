@@ -66,12 +66,6 @@ import at.gaeckler.MyActivity;
 
 public abstract class GpsActivity extends MyActivity
 {
-	// GPS events, handle these events in your onGnssStatusChanged2
-	public static final int GPS_EVENT_STARTED = 1;				// GPS started GnssStatus.Callback received onStarted()
-	public static final int GPS_EVENT_SATELLITE_STATUS = 2;		// GPS started GnssStatus.Callback received onSatelliteStatusChanged()
-	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
-	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
-
 // -------------------------------------------------------------------------------------------------
 // region Helper
 // -------------------------------------------------------------------------------------------------
@@ -260,6 +254,7 @@ public abstract class GpsActivity extends MyActivity
 	private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 	private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 
+	// region notification permission
 	/**
 	 * Check if the location permission is granted
 	 * @return true if the location permission is granted, false otherwise
@@ -280,7 +275,9 @@ public abstract class GpsActivity extends MyActivity
 		intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
 		startActivity(intent);
 	}
+	//endregion
 
+	// region location permission
 	/**
 	 * Check if the location permission is granted
 	 * @return true if the location permission is granted, false otherwise
@@ -306,58 +303,11 @@ public abstract class GpsActivity extends MyActivity
 				new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
 				LOCATION_PERMISSION_REQUEST_CODE
 		);
-/*
-		if (Build.VERSION.SDK_INT >= 33)
-		{ // Android 13+
-			if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
-			{
-				requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
-			}
-		}
- */
 		return true;
 	}
+	//endregion
 
-	/**
-	 * Prüft, ob für die gespeicherte SAF-Uri noch Rechte vorliegen.
-	 */
-	private  boolean checkSafFolderPermissions( boolean writePermission )
-	{
-		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
-		if(uriString == null)
-		{
-			return false;
-		}
-		Uri treeUri = Uri.parse(uriString);
-		if(treeUri == null)
-		{
-			return false;
-		}
-
-		int modeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
-		if(writePermission)
-		{
-			modeFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
-		}
-
-		try
-		{
-			// Diese Methode wirft keine Exception, wenn man keine Rechte hat,
-			// aber man kann damit prüfen, ob der Zugriff noch valide ist.
-			getContentResolver().takePersistableUriPermission(treeUri, modeFlags);
-		}
-		catch (SecurityException e)
-		{
-			return false;
-		}
-
-		// 2. Prüfung via DocumentFile (ist der Ordner noch vorhanden?)
-		DocumentFile folder = DocumentFile.fromTreeUri(this, treeUri);
-		return folder != null && folder.exists()
-				&& folder.canRead()
-				&& (!writePermission || folder.canWrite());
-	}
-
+	// region external storage manager
 	/**
 	 * Check if the device is running on a device with an external storage manager
 	 * @return true if the device is running on a device with an external storage manager, false otherwise
@@ -367,6 +317,28 @@ public abstract class GpsActivity extends MyActivity
 		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager();
 	}
 
+	public void displayStorageManagePermission()
+	{
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+		{
+			try
+			{
+				Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+				intent.addCategory("android.intent.category.DEFAULT");
+				intent.setData(Uri.parse(String.format("package:%s", getPackageName())));
+				startActivity(intent);
+			} catch(Exception e)
+			{
+				Intent intent = new Intent();
+				intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+				startActivity(intent);
+			}
+		}
+	}
+
+	//endregion
+
+	// region external storage permission
 	/**
 	 * Check if the storage read permission is granted
 	 * @return true if the storage read permission is granted, false otherwise
@@ -392,25 +364,6 @@ public abstract class GpsActivity extends MyActivity
 		return checkSafFolderPermissions(true) || ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
 	}
 
-	public void displayStorageManagePermission()
-	{
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-		{
-			try
-			{
-				Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-				intent.addCategory("android.intent.category.DEFAULT");
-				intent.setData(Uri.parse(String.format("package:%s", getPackageName())));
-				startActivity(intent);
-			} catch(Exception e)
-			{
-				Intent intent = new Intent();
-				intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-				startActivity(intent);
-			}
-		}
-	}
-
 	/**
 	 * The request code for the storage permission
 	 * rcOK: permission already granted
@@ -421,6 +374,9 @@ public abstract class GpsActivity extends MyActivity
 
 	/**
 	 * Request the storage permission
+	 * For Android level 30 or later we need Storage Manager Permission
+	 * For Android level 29 or earlier we need READ_EXTERNAL_STORAGE and WRITE_EXTERNAL_STORAGE
+	 * permission
 	 * @param iconId the icon to use
 	 * @param title the title to use
 	 * @return the request code
@@ -447,7 +403,6 @@ public abstract class GpsActivity extends MyActivity
 						!= PackageManager.PERMISSION_GRANTED
 		)
 		{
-			// Suggestion: Request the permission instead of just failing
 			ActivityCompat.requestPermissions(
 					this,
 					new String[]{READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE},
@@ -467,7 +422,26 @@ public abstract class GpsActivity extends MyActivity
 		}
 		return RequestCode.OK;
 	}
+	//endregion
 
+	/**
+	 * Called when a permission is requested and user has answered. Not for SAF permissions
+	 * see the SAF region in this source code
+	 * we are reacting on LOACTION_PERMISSION_REQUEST_CODE and STORAGE_PERMISSION_REQUEST_CODE, only
+	 * since we do not care about the notification permission and the manager permission cannot be
+	 * processed here
+	 * The STORAGE_PERMISSION_REQUEST_CODE is used for the public external storage
+	 * The Manager permission is for the public external storage, too, it is required since android
+	 * level 30
+	 * for SAF none of these permissions are required
+	 * @param requestCode The request code passed in {@link #requestPermissions(
+	 * android.app.Activity, String[], int)}
+	 * @param permissions The requested permissions. Never null.
+	 * @param grantResults The grant results for the corresponding permissions
+	 *     which is either {@link android.content.pm.PackageManager#PERMISSION_GRANTED}
+	 *     or {@link android.content.pm.PackageManager#PERMISSION_DENIED}. Never null.
+	 *
+	 */
 	@Override
 	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
 	{
@@ -507,6 +481,12 @@ public abstract class GpsActivity extends MyActivity
 // -------------------------------------------------------------------------------------------------
 // region Basic Activity implementation
 // -------------------------------------------------------------------------------------------------
+
+	// GPS events, handle these events in your onGnssStatusChanged2
+	public static final int GPS_EVENT_STARTED = 1;				// GPS started GnssStatus.Callback received onStarted()
+	public static final int GPS_EVENT_SATELLITE_STATUS = 2;		// GPS started GnssStatus.Callback received onSatelliteStatusChanged()
+	public static final int GPS_EVENT_FIRST_FIX = 3;			// GPS started GnssStatus.Callback received onFirstFix()
+	public static final int GPS_EVENT_STOPPED = 4;				// GPS started GnssStatus.Callback received onStopped()
 
 	private LocationManager		m_locationManager = null;
 	private GnssStatus.Callback	m_gnssStatusListener = null;
@@ -630,6 +610,46 @@ public abstract class GpsActivity extends MyActivity
 				}
 			}
 		}
+	}
+
+	/**
+	 * Checks if there are still permissions to read/write the storage folder
+	 */
+	private  boolean checkSafFolderPermissions( boolean writePermission )
+	{
+		String uriString = getSharedPreferences(CONFIG_FILE, MODE_PRIVATE).getString(CONFIG_KEY, null);
+		if(uriString == null)
+		{
+			return false;
+		}
+		Uri treeUri = Uri.parse(uriString);
+		if(treeUri == null)
+		{
+			return false;
+		}
+
+		int modeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+		if(writePermission)
+		{
+			modeFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+		}
+
+		try
+		{
+			// Diese Methode wirft keine Exception, wenn man keine Rechte hat,
+			// aber man kann damit prüfen, ob der Zugriff noch valide ist.
+			getContentResolver().takePersistableUriPermission(treeUri, modeFlags);
+		}
+		catch (SecurityException e)
+		{
+			return false;
+		}
+
+		// 2. Prüfung via DocumentFile (ist der Ordner noch vorhanden?)
+		DocumentFile folder = DocumentFile.fromTreeUri(this, treeUri);
+		return folder != null && folder.exists()
+				&& folder.canRead()
+				&& (!writePermission || folder.canWrite());
 	}
 
 	/**
